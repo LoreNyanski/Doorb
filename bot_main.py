@@ -4,25 +4,27 @@
 
 # bot.py
 import os
-import discord
 import re
+import discord
 import random
-import datetime
 import logging
-
+import datetime
 
 from discord.ext import commands
-from dotenv import load_dotenv
 from door_manager import Door_manager
+from dotenv import load_dotenv
 # from games import
+
+
 
 load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
+shibe = os.getenv('shibe')
 filepath = os.getenv('filepath')
 
 # TODO: proper intents my guy
 intents = discord.Intents.all()
-client = commands.Bot(command_prefix='d!', intents=intents)
+client = commands.Bot(command_prefix='!', intents=intents, help_command=None)
 
 handler = logging.FileHandler(filename='discord.log', encoding='utf-8', mode='w')
 
@@ -41,7 +43,7 @@ REQUIREMENT_HIVEMIND = 3
 
 # Globals
 last_message = ''
-
+client.active_sticker = 1305957931304615997
 
 # -----------------------------------------------------------------------------------------
 #                                    Functions
@@ -52,7 +54,7 @@ last_message = ''
 def rndm(chance) -> bool:
     if chance < 1: return False
     return random.randint(1,chance) == 1
-
+    
 
 # -----------------------------------------------------------------------------------------
 #                                    Predicates
@@ -72,12 +74,20 @@ def amogus_check(message) -> bool:
 def dad_check(message) -> bool:
     return re.search(r"^I('| a)?m ", message.content, re.IGNORECASE) and rndm(CHANCE_DAD)
 
-def door_check(message):
-    return dm.get_sticker()
+def door_check(message) -> bool:
+    if message.stickers:
+        return client.active_sticker in [stckr.id for stckr in message.stickers]
+    else: return False
+
 
 # -----------------------------------------------------------------------------------------
 #                                    Events
 # -----------------------------------------------------------------------------------------
+
+# Error "handler"
+# @client.event
+# async def on_error(event, *args, **kwargs):
+    # print(f'I just shat myself at {event}')
 
 # On ready handler
 @client.event
@@ -89,16 +99,19 @@ async def on_ready():
 # Message handler
 @client.event
 async def on_message(message):
+    global last_message
 
     # Dont respond to your own shit idiot
     if message.author == client.user:
-        client.last_message = message.content
+        last_message = message.content
         return
+
+    # Do commands if applicable
+    await client.process_commands(message)
 
     # Test feature
     if message.content == 'door':
         await message.channel.send("look at this dumbass XD")
-
 
     # Amogus detector
     if amogus_check(message):
@@ -124,29 +137,30 @@ async def on_message(message):
         await message.channel.send(content=response, reference=message.to_reference())
 
     # Hivemind
-    elif hivemind_check(message, client.last_msg, [msgs async for msgs in message.channel.history(limit=REQUIREMENT_HIVEMIND)]):
+    elif hivemind_check(message, last_message, [msgs async for msgs in message.channel.history(limit=REQUIREMENT_HIVEMIND)]):
         msg = message.content
         response = msg
 
         await message.channel.send(content=response)
-    
+
 
 
     # sticker check
-    try:
-        if door_check(client.sticker, message):
-            response = 'dumbass'
+    if door_check(message):
+        dm.new_dumbass(message.author.id, message.created_at)
 
-            await message.channel.send(response)
-    except:
-        await message.channel.send()
 
 # -----------------------------------------------------------------------------------------
 #                                    Meta commands
 # -----------------------------------------------------------------------------------------
 
+# Test command
+@client.command(name='hi')
+async def hi(ctx):
+    await ctx.send('haiii :3')
+
 # Display list of commands
-@client.command
+@client.command()
 async def help(ctx):
     response = '''
 Welcome to doorbot!
@@ -157,41 +171,28 @@ To set up which sticker I should be tracking please use the 'sticker' command
 List of commands:
 - General:
     - help - youre reading it rn idiot
-    - prefix [new prefix] - change the prefix to something new
-    - 
 
 - Door related:
-    - sticker [sticker id] - starts tracking the sticker with the specified id
     - stats [optional: user id] - displays the statistics of user. If no id provided the default is you.
     - serverstats [optional: statistic name] - displays the best member in each statistic. If specific stat provided as argument, displays the that specific statistic for all members.
     - bet [user] [amount] - place a bet on who will be the next dumbass.
-    -
-    
+
 - Games:
     - daily - gamba
     - blackjack - gamba2: electric boogaloo
     - woke_trivia - Can you guess the videogame based on how the steam curator 'Woke Content Detector' reviewed it?
-    - 
+    - wild_magic
+    - scp
     '''
     
     await ctx.send(response)
-
-# Change command prefix
-@client.command
-async def change_prefix(ctx):
-    response = '''
-You fool, you buffoon, you thought I already implemented this?? 
-    - Lore
-'''
-    await ctx.send(response)
-    
 
 # -----------------------------------------------------------------------------------------
 #                                   Door shenanigans
 # -----------------------------------------------------------------------------------------
 
 # List statistics for yourself
-@client.command
+@client.command()
 async def stats(ctx):
     response = '''
 You fool, you buffoon, you thought I already implemented this?? 
@@ -229,11 +230,37 @@ You fool, you buffoon, you thought I already implemented this??
     await ctx.send(response)
 
 # daily roll between 1 and 1000 - make it look like the google rng - 
+@client.command()
 async def rollies(ctx):
-    response = '''
-You fool, you buffoon, you thought I already implemented this?? 
-    - Lore
+    delta_time = dm.get_delta_daily(ctx.author.id)
+    if delta_time.days > 1:
+        result = random.randint(1, 1000)
+        dm.daily(ctx.author.id, result)
+        response = f'''
+```
+                Min: 
+                1
+{result}
+                Max: 
+                1000
+
+####################
+##### Generate #####
+####################
+```
 '''
+    if result == 1000:
+        await ctx.send(response)
+        await ctx.send('HOLY SHIIIT')
+        await ctx.send(f'<@{shibe}>')
+        await ctx.send(f'IT FINALLY HAPPENED <@{shibe}>')
+        await ctx.send(f'<@{shibe}>')
+        return
+    else:
+        delta_time = datetime.timedelta(days=1) - delta_time
+        response = f'''
+Bisch wait {delta_time.seconds//3600} hour(s) {(delta_time.seconds%3600)//60} minute(s) before your next roll
+        '''
     await ctx.send(response)
 
 @client.command
@@ -248,5 +275,5 @@ You fool, you buffoon, you thought I already implemented this??
 
 
 # Run the client
-
-client.run(TOKEN, log_handler=handler)
+if __name__ == "__main__":
+    client.run(TOKEN, log_handler=handler)
