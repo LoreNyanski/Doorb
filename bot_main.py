@@ -55,6 +55,9 @@ def rndm(chance) -> bool:
     if chance < 1: return False
     return random.randint(1,chance) == 1
     
+def calculate_payouts():
+    
+    return
 
 # -----------------------------------------------------------------------------------------
 #                                    Predicates
@@ -148,6 +151,7 @@ async def on_message(message):
     # sticker check
     if door_check(message):
         dm.new_dumbass(message.author.id, message.created_at)
+
 
 
 # -----------------------------------------------------------------------------------------
