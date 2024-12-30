@@ -37,10 +37,10 @@ dm = Door_manager()
 
 
 # CONSTANTS
-CHANCE_AMOGUS = 10
-CHANCE_DAD = 10
+CHANCE_AMOGUS = 5
+CHANCE_DAD = 5
 CHANCE_HIVEMIND = 2
-CHANCE_DUMBASS = 4
+CHANCE_DUMBASS = 2
 REQUIREMENT_HIVEMIND = 3
 
 # Globals
@@ -62,7 +62,7 @@ def rndm(chance) -> bool:
     if chance < 1: return False
     return random.randint(1,chance) == 1
     
-def finish_bet(correct_id):
+def finish_bet(correct_id) -> dict:
     pay = dm.bets.get_payouts(correct_id)
     for user_id in pay:
         dm.add_money(user_id, pay[user_id])
@@ -79,6 +79,21 @@ async def get_all_dumbasses(guild):
             print(channel.name + ' done')
     print('everything done')
             
+def format_deltatime(time: datetime.timedelta) -> str:
+    days = time.days
+    hours = time.seconds // 3600
+    minutes = time.seconds % 3600 // 60
+    seconds = time.seconds % 3600 % 60
+
+    ret = ''
+    ret += f'{days:>2}d ' if days > 0 else '    '
+    ret += f'{hours:>2}h ' if hours > 0 or days > 0 else '    '
+    ret += f'{minutes:>2}m ' if minutes > 0 or hours > 0 or days > 0 else '    '
+    ret += f'{seconds:>2}s'
+    
+    return ret
+
+
 # -----------------------------------------------------------------------------------------
 #                                    Predicates
 # -----------------------------------------------------------------------------------------
@@ -181,11 +196,13 @@ async def on_message(message):
             message.reply(response)
         if not dm.no_bets():
             response = str(dm.bets)
-            pays = finish_bet()
+            pays = finish_bet(message.author.id)
             response = '''
 # BETS OVER!
 Correct guessers: {}
-'''.format() + response
+'''.format(', '.join([message.guild.get_member(id).name for id in pays])) + response
+        
+            await message.channel.send(content=response)
 
 
 
@@ -224,18 +241,12 @@ async def help(ctx):
 Welcome to doorbot!
 
 I am here to tell you who's the biggest dumbass on your discord server.
-To set up which sticker I should be tracking please use the 'sticker' command
 
 List of commands:
-- General:
-    - help - youre reading it rn idiot
-
-- Door related:
-    - stats [optional: statistic] - displays your stats or the leaderboard in provided statistic on the server
-    - bet [user] [amount] - place a bet on who will be the next dumbass.
-
-- Games:
-    - daily - gamba
+    help - youre reading it rn idiot
+    stats [optional: statistic] - displays your stats or the leaderboard in provided statistic on the server
+    bet [optional:user] [optional:amount] - place a bet on who will be the next dumbass. If none provided displays the current bets
+    rollies - gamba
     '''
     
     await ctx.send(response)
@@ -250,15 +261,44 @@ async def stats(ctx, *args):
     if len(args) == 0:
         # TODO: time since last incident
         res = dm.stats(ctx.author.id, 0, 'self')
-        await ctx.send(res)
+        res = [res[0]]+[format_deltatime(time) for time in res[1:]]
+        response = f'''
+{ctx.author.name}'s stats:
+```
+Total incidents:  {res[0]:>14}
+Avg time between: {res[1]}
+Med time between: {res[2]}
+Longest  streak:  {res[3]}
+Shortest streak:  {res[4]}
+
+Current streak:   {res[5]}
+```
+'''
+        await ctx.send(response)
         return 
     if len(args) != 1:
         await ctx.send('Invalid arguments lol')
         return
     stat = args[0]
-    if stat in ['mean', 'count', 'median', 'max', 'min']:
+    if stat in ['mean', 'count', 'median', 'max', 'min', 'last']:
         res = dm.stats(ctx.author.id, [member.id for member in ctx.guild.members], stat)
-        await ctx.send(res[:10])
+        if stat == 'count':
+            res = [(ctx.guild.get_member(user_id).name, str(count)) for user_id, count in res[:10]]
+            longest_name = max([len(name) for name,time in res])
+        else:
+            res = [(ctx.guild.get_member(user_id).name, format_deltatime(time) if not type(time)== str else '    Data needed') 
+                   for user_id, time in res[:10]]
+            longest_name = max([len(name) for name,time in res])
+        response = '\n'.join(['#{0}  {1:<{2}} {3:<}'.format(index+1, tup[0], longest_name, tup[1]) for index, tup in enumerate(res)])
+        response = '```\n' + response + '\n```'
+        match stat:
+            case 'mean': response = 'Average time between incidents:' + response
+            case 'count': response = 'Total number of incidents:' + response
+            case 'median': response = 'Median of time between incidents:' + response
+            case 'max': response = 'Longest streak without incidents:' + response
+            case 'min': response = 'Shortest streak without incidents:' + response
+            case 'last': response = 'Current streak without incidents:' + response
+        await ctx.send(response)
         return
     else:   
         await ctx.send('thats not a real statistic ._. \n check your own stats for options')
@@ -266,7 +306,7 @@ async def stats(ctx, *args):
 
 # allows you to place bets on who will be the next to fail an int check
 @client.command()
-async def bet(ctx, *args):
+async def bets(ctx, *args):
     if len(args) == 0:
         await ctx.send(str(dm.bets))
         # display current bets
@@ -287,7 +327,7 @@ async def bet(ctx, *args):
         if bet_amount < 0:
             await ctx.send('not today satan')
             return
-        if dm.get_money(ctx.author.id) < bet_amount:
+        if dm.get_money(ctx.author.id) + dm.get_bet(ctx.author.id)[1] < bet_amount:
             await ctx.send(f'lmao poor mf :kekw: :index_pointing_at_the_viewier:\n(Your balance is: {dm.get_money(ctx.author.id)})')
             return
         
@@ -315,7 +355,7 @@ async def bet(ctx, *args):
 @client.command()
 async def rollies(ctx):
     delta_time = dm.get_delta_daily(ctx.author.id)
-    result = random.randint(1000, 1000)
+    result = random.randint(1, 1000)
     if delta_time.days > 1:
         dm.daily(ctx.author.id, result)
     else:
@@ -342,15 +382,15 @@ That being said enjoy your gamba:
 '''
     await ctx.send(response)
     if result == 1000:
-        sleep(0.3)
+        sleep(0.8)
         await ctx.send('HOLY SHIIIT')
-        sleep(0.1)
+        sleep(0.5)
         await ctx.send(f'<@{shibe}>')
-        sleep(0.1)
+        sleep(1)
         await ctx.send(f'IT FINALLY HAPPENED!!1! <@{shibe}>')
-        sleep(0.3)
+        sleep(0.4)
         await ctx.send(f'<@{shibe}>')
-        sleep(0.2)
+        sleep(1.1)
         await ctx.send(f'you owe me a cookie :D')
     return
 

@@ -6,7 +6,7 @@ import bisect
 from collections import defaultdict
 
 
-default_values_userdata = {'money':0,'last_daily':pd.to_datetime(0),'bet_user_id':0,'bet_amount':0}
+default_values_userdata = {'money':500,'last_daily':pd.to_datetime(0),'bet_user_id':0,'bet_amount':0}
 pd.options.mode.chained_assignment = None # I don't care pandas
 
 class Door_manager:
@@ -72,6 +72,8 @@ class Door_manager:
         return self.userdata.loc[user_id, 'last_daily']
     def get_delta_daily(self, user_id):
         return datetime.datetime.now() - self.get_last_daily(user_id)
+    def get_last_incident(self, user_id):
+        return self.data[user_id][-1]
 
     # Change money of user
     def add_money(self, user_id, amount):
@@ -95,6 +97,7 @@ class Door_manager:
     # Register bet in userdata
     @op_userdata
     def place_bet(self, user_id, bet_user_id, bet_amount):
+        self.add_money(user_id, self.userdata.loc[user_id, 'bet_amount'])
         self.userdata.loc[user_id, 'bet_user_id'] = bet_user_id
         self.userdata.loc[user_id, 'bet_amount'] = bet_amount
         self.add_money(user_id, -1*bet_amount)
@@ -105,6 +108,7 @@ class Door_manager:
     def clearbets(self, user_id):
         self.userdata['bet_user_id'] = 0
         self.userdata['bet_amount'] = 0
+        self.bets = Bet(self.userdata[['bet_user_id', 'bet_amount']])
 
     @op_data
     def cleardata(self, user_id=None):
@@ -119,18 +123,28 @@ class Door_manager:
             if len(self.data[user_id]) > 1:
                 ehe = [len(self.data[user_id])]
                 ehe = ehe + pd.Series(self.data[user_id], name='ehe').diff().aggregate(['mean', 'median', 'max', 'min']).to_list()
+                ehe = ehe + [datetime.datetime.now(tz=datetime.timezone.utc) - self.get_last_incident(user_id)]
             else:
                 ehe = 'Not enough data'
         else:
             # This way it takes the users from only ppl who already have data in csv, not the entire server
             # user_ids = self.data.keys()
             if stat == 'count':
-                ehe = [(user,len(self.data[user])) for user in user_ids]
+                ehe = [(user, len(self.data[user])) for user in user_ids]
+                ehe.sort(key= lambda x: x[1], reverse=True)
+            elif stat == 'last':
+                ehe = []
+                for user in user_ids:
+                    try:
+                        ehe.append((user,datetime.datetime.now(tz=datetime.timezone.utc) - self.get_last_incident(user)))
+                    except:
+                        ehe.append((user,'Not enough data'))
+                ehe.sort(key= lambda x: x[1] if not type(x[1]) == str else datetime.timedelta.min, reverse=True)
             else:
                 ehe = [(user,pd.Series(self.data[user], name='ehe').diff().aggregate(stat)) if len(self.data[user]) > 1 
                        else (user,'Not enough data')
                        for user in user_ids]
-            ehe.sort(key= lambda x: x[1] if not type(x[1]) == str else datetime.timedelta.max)
+                ehe.sort(key= lambda x: x[1] if not type(x[1]) == str else datetime.timedelta.max)
         return ehe
 
 # --------------------------------------------------------------------------------------------
