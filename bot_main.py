@@ -10,6 +10,7 @@ import random
 import logging
 import datetime
 
+from time import sleep
 from discord.ext import commands
 from door_manager import Door_manager
 from dotenv import load_dotenv
@@ -39,11 +40,17 @@ dm = Door_manager()
 CHANCE_AMOGUS = 10
 CHANCE_DAD = 10
 CHANCE_HIVEMIND = 2
+CHANCE_DUMBASS = 4
 REQUIREMENT_HIVEMIND = 3
 
 # Globals
 last_message = ''
-client.active_sticker = 1305957931304615997
+client.insults = ['Idiot', 'Dumbass', 'Stupid', 'Unintelligent', 'Fool', 'Moron', 'Dummy', 'Daft', 'Unwise', 'Half-baked',
+                  'Knobhead', 'Hingedly-impaired', 'Architectally challenged', 'Ill-advised', 'Imbecile', 'Dim', 'Unthinking', 'Half-witted']
+# client.active_sticker = 1305957931304615997
+
+# this is a test sticker
+client.active_sticker = 1321199183851687966 
 
 # -----------------------------------------------------------------------------------------
 #                                    Functions
@@ -55,10 +62,23 @@ def rndm(chance) -> bool:
     if chance < 1: return False
     return random.randint(1,chance) == 1
     
-def calculate_payouts():
-    
-    return
+def finish_bet(correct_id):
+    pay = dm.bets.get_payouts(correct_id)
+    for user_id in pay:
+        dm.add_money(user_id, pay[user_id])
+    dm.clearbets()
+    return pay
 
+async def get_all_dumbasses(guild):
+    dm.cleardata()
+    for channel in guild.channels:
+        if isinstance(channel, discord.TextChannel):
+            async for message in channel.history(limit=None):
+                if client.active_sticker in [stckr.id for stckr in message.stickers]:
+                    dm.new_dumbass(message.author.id, message.created_at)
+            print(channel.name + ' done')
+    print('everything done')
+            
 # -----------------------------------------------------------------------------------------
 #                                    Predicates
 # -----------------------------------------------------------------------------------------
@@ -98,13 +118,18 @@ async def on_ready():
     print(f'{client.user} has logged in\n\nConnected to the following guilds:')
     for guild in client.guilds:
         print(f'    {guild.name} (id: {guild.id})')
+        # await get_all_dumbasses(guild)
+
+# @client.event
+# async def on_guild_available(guild):
+    # await get_all_dumbasses(guild)
 
 # Message handler
 @client.event
 async def on_message(message):
     global last_message
 
-    # Dont respond to your own shit idiot
+    # Dont respond to your own message idiot
     if message.author == client.user:
         last_message = message.content
         return
@@ -151,6 +176,19 @@ async def on_message(message):
     # sticker check
     if door_check(message):
         dm.new_dumbass(message.author.id, message.created_at)
+        if rndm(CHANCE_DUMBASS):
+            response = random.choice(client.insults)
+            message.reply(response)
+        if not dm.no_bets():
+            response = str(dm.bets)
+            pays = finish_bet()
+            response = '''
+# BETS OVER!
+Correct guessers: {}
+'''.format() + response
+
+
+
 
 
 
@@ -162,6 +200,22 @@ async def on_message(message):
 @client.command(name='hi')
 async def hi(ctx):
     await ctx.send('haiii :3')
+
+@client.command()
+async def balance(ctx):
+    delta_time = dm.get_delta_daily(ctx.author.id)
+    if delta_time.days > 1:
+        response = f'''
+Daily available :D
+You're balance: {dm.get_money(ctx.author.id)}
+'''
+    else:  
+        delta_time = datetime.timedelta(days=1) - delta_time
+        response = f'''
+Daily available in {delta_time.seconds//3600} hour(s) {(delta_time.seconds%3600)//60} minute(s).
+You're balance: {dm.get_money(ctx.author.id)}
+'''
+    await ctx.send(response)
 
 # Display list of commands
 @client.command()
@@ -177,16 +231,11 @@ List of commands:
     - help - youre reading it rn idiot
 
 - Door related:
-    - stats [optional: user id] - displays the statistics of user. If no id provided the default is you.
-    - serverstats [optional: statistic name] - displays the best member in each statistic. If specific stat provided as argument, displays the that specific statistic for all members.
+    - stats [optional: statistic] - displays your stats or the leaderboard in provided statistic on the server
     - bet [user] [amount] - place a bet on who will be the next dumbass.
 
 - Games:
     - daily - gamba
-    - blackjack - gamba2: electric boogaloo
-    - woke_trivia - Can you guess the videogame based on how the steam curator 'Woke Content Detector' reviewed it?
-    - wild_magic
-    - scp
     '''
     
     await ctx.send(response)
@@ -197,50 +246,88 @@ List of commands:
 
 # List statistics for yourself
 @client.command()
-async def stats(ctx):
-    response = '''
-You fool, you buffoon, you thought I already implemented this?? 
-    - Lore
-'''
-    await ctx.send(response)
-
-# list of all statistics with the person in #1 of said stat
-# if specific stat given as arg - lists that stat with all server ppl
-async def serverstats(ctx):
-    response = '''
-You fool, you buffoon, you thought I already implemented this?? 
-    - Lore
-'''
-    await ctx.send(response)
+async def stats(ctx, *args):
+    if len(args) == 0:
+        # TODO: time since last incident
+        res = dm.stats(ctx.author.id, 0, 'self')
+        await ctx.send(res)
+        return 
+    if len(args) != 1:
+        await ctx.send('Invalid arguments lol')
+        return
+    stat = args[0]
+    if stat in ['mean', 'count', 'median', 'max', 'min']:
+        res = dm.stats(ctx.author.id, [member.id for member in ctx.guild.members], stat)
+        await ctx.send(res[:10])
+        return
+    else:   
+        await ctx.send('thats not a real statistic ._. \n check your own stats for options')
+        return
 
 # allows you to place bets on who will be the next to fail an int check
-async def bet(ctx):
-    response = '''
-You fool, you buffoon, you thought I already implemented this?? 
-    - Lore
-'''
-    await ctx.send(response)
+@client.command()
+async def bet(ctx, *args):
+    if len(args) == 0:
+        await ctx.send(str(dm.bets))
+        # display current bets
+
+    elif len(args) == 2:
+        try:
+            user = ctx.guild.get_member_named(str(args[0]))
+            bet_amount = int(args[1])
+        except:
+            await ctx.send('Invalid arguments lol')
+            return
+        if user == None:
+            await ctx.send('No user with that name')
+            return 
+        if user == ctx.author:
+            await ctx.send("Can't bet on yourself idiot")
+            return
+        if bet_amount < 0:
+            await ctx.send('not today satan')
+            return
+        if dm.get_money(ctx.author.id) < bet_amount:
+            await ctx.send(f'lmao poor mf :kekw: :index_pointing_at_the_viewier:\n(Your balance is: {dm.get_money(ctx.author.id)})')
+            return
+        
+        dm.place_bet(ctx.author.id, user.id, bet_amount)
+        await ctx.send(f'Bet successfully placed on {user.name}\n(New balance: {dm.get_money(ctx.author.id)})')
+        return
+    
+    else:
+        await ctx.send('Invalid arguments lol')
+        return
 
 # -----------------------------------------------------------------------------------------
 #                                        Misc
 # -----------------------------------------------------------------------------------------
 
 # just straight up blackjack
-async def blackjack(ctx):
-    response = '''
-You fool, you buffoon, you thought I already implemented this?? 
-    - Lore
-'''
-    await ctx.send(response)
+# async def blackjack(ctx):
+    # response = '''
+# You fool, you buffoon, you thought I already implemented this?? 
+    # - Lore
+# '''
+    # await ctx.send(response)
 
 # daily roll between 1 and 1000 - make it look like the google rng - 
 @client.command()
 async def rollies(ctx):
     delta_time = dm.get_delta_daily(ctx.author.id)
+    result = random.randint(1000, 1000)
     if delta_time.days > 1:
-        result = random.randint(1, 1000)
         dm.daily(ctx.author.id, result)
+    else:
+        delta_time = datetime.timedelta(days=1) - delta_time
         response = f'''
+Bisch wait.
+You can only get money from your roll in {delta_time.seconds//3600} hour(s) {(delta_time.seconds%3600)//60} minute(s).
+
+That being said enjoy your gamba:
+        '''
+        await ctx.send(response)
+    response = f'''
 ```
                 Min: 
                 1
@@ -253,30 +340,33 @@ async def rollies(ctx):
 ####################
 ```
 '''
+    await ctx.send(response)
     if result == 1000:
-        await ctx.send(response)
+        sleep(0.3)
         await ctx.send('HOLY SHIIIT')
+        sleep(0.1)
         await ctx.send(f'<@{shibe}>')
-        await ctx.send(f'IT FINALLY HAPPENED <@{shibe}>')
+        sleep(0.1)
+        await ctx.send(f'IT FINALLY HAPPENED!!1! <@{shibe}>')
+        sleep(0.3)
         await ctx.send(f'<@{shibe}>')
-        return
-    else:
-        delta_time = datetime.timedelta(days=1) - delta_time
-        response = f'''
-Bisch wait {delta_time.seconds//3600} hour(s) {(delta_time.seconds%3600)//60} minute(s) before your next roll
-        '''
-    await ctx.send(response)
+        sleep(0.2)
+        await ctx.send(f'you owe me a cookie :D')
+    return
 
-@client.command
-async def woke_trivia(ctx):
-    response = '''
-You fool, you buffoon, you thought I already implemented this?? 
-    - Lore
-'''
-    await ctx.send(response)
+# @client.command
+# async def woke_trivia(ctx):
+    # response = '''
+# You fool, you buffoon, you thought I already implemented this?? 
+    # - Lore
+# '''
+    # await ctx.send(response)
 
+# @client.command()
+# async def wild_magic(ctx):
 
-
+# @client.command()
+# async def scp():
 
 # Run the client
 if __name__ == "__main__":

@@ -1,11 +1,13 @@
 import pandas as pd
 import csv
 import datetime
+import bisect
 
 from collections import defaultdict
 
 
 default_values_userdata = {'money':0,'last_daily':pd.to_datetime(0),'bet_user_id':0,'bet_amount':0}
+pd.options.mode.chained_assignment = None # I don't care pandas
 
 class Door_manager:
 
@@ -40,15 +42,15 @@ class Door_manager:
             self.userdata.loc[user] = default_values_userdata
 
     def no_bets(self):
-        return all(self.userdata['bet_user_id'] == 0)
+        return self.bets.no_bets()
 
     # Wrappers
     def op_data(func):
         def ret(self, *args, **kwargs):
             func(self, *args, **kwargs)
             self.save_data()
+        ret.original_function = func
         return ret
-    
     def op_userdata(func):
         def ret(self, user_id=0, *args, **kwargs):
             if user_id != 0: self.user_pre(user_id)
@@ -75,12 +77,15 @@ class Door_manager:
     def add_money(self, user_id, amount):
         self.userdata.loc[user_id, 'money'] += amount
 
+
+
     # Add new instance of dumbassery 
     @op_data
     def new_dumbass(self, user_id, time):
-        self.data[user_id].append(time)
+        bisect.insort(self.data[user_id], time)
         return
     
+
     # Add money from daily
     @op_userdata
     def daily(self, user_id, amount):
@@ -89,9 +94,10 @@ class Door_manager:
 
     # Register bet in userdata
     @op_userdata
-    def bet(self, user_id, bet_user_id, bet_amount):
+    def place_bet(self, user_id, bet_user_id, bet_amount):
         self.userdata.loc[user_id, 'bet_user_id'] = bet_user_id
         self.userdata.loc[user_id, 'bet_amount'] = bet_amount
+        self.add_money(user_id, -1*bet_amount)
         self.bets.add_bet(self.userdata.loc[user_id])
 
     # clear all bets in userdata
@@ -100,13 +106,41 @@ class Door_manager:
         self.userdata['bet_user_id'] = 0
         self.userdata['bet_amount'] = 0
 
-    def stats():
-        pass
+    @op_data
+    def cleardata(self, user_id=None):
+        if user_id == None:
+            self.data = defaultdict(list)
+        else:
+            self.data.pop(user_id)
+
+
+    def stats(self, user_id, user_ids, stat):
+        if stat == 'self':
+            if len(self.data[user_id]) > 1:
+                ehe = [len(self.data[user_id])]
+                ehe = ehe + pd.Series(self.data[user_id], name='ehe').diff().aggregate(['mean', 'median', 'max', 'min']).to_list()
+            else:
+                ehe = 'Not enough data'
+        else:
+            # This way it takes the users from only ppl who already have data in csv, not the entire server
+            # user_ids = self.data.keys()
+            if stat == 'count':
+                ehe = [(user,len(self.data[user])) for user in user_ids]
+            else:
+                ehe = [(user,pd.Series(self.data[user], name='ehe').diff().aggregate(stat)) if len(self.data[user]) > 1 
+                       else (user,'Not enough data')
+                       for user in user_ids]
+            ehe.sort(key= lambda x: x[1] if not type(x[1]) == str else datetime.timedelta.max)
+        return ehe
 
 # --------------------------------------------------------------------------------------------
 # 
 # -------------------------------------------------------------------------------------------
 
+
+# this doesn't seem very userful ngl since to initialize it you HAVE to give a dataframe with the 2 columns
+# 'bet_user_id' and 'bet_amount' indexed by user id. So to say there woudln't really be any way to use this outside of
+# Door manager, but it does help me with organising things so it stays
 class Bet:
 
     def __init__(self, df):
@@ -119,18 +153,16 @@ class Bet:
 
     def calcpool(self):
         self.pool = self.data['bet_amount'].sum()
-
     def calctable(self):
-        df = self.data[['bet_user_id', 'bet_amount']].groupby(['bet_user_id']).aggregate(['max', 'sum'])
-        df.columns = ['max', 'amount']
-        df['loser_wagers'] = self.pool - df['amount']
-        df['percent'] = df['amount'] / self.pool
+        df = self.data[['bet_user_id', 'bet_amount']].groupby(['bet_user_id']).aggregate(['max', 'sum', 'count'])
+        df.columns = ['max', 'amount', 'count']
+        df.loc[:,'loser_wagers'] = self.pool - df['amount'].copy()
+        df.loc[:,'percent'] = df['amount'].copy() / self.pool
         self.table = df.copy()
-
     def calcpayouts(self):
-        self.data['percent'] = self.data['bet_amount'] / self.table.loc[self.data['bet_user_id']]['amount'].values
-        self.data['payouts'] = self.data['bet_amount'] + self.table.loc[self.data['bet_user_id']]['loser_wagers'].values * self.data['percent']
-
+        self.data.loc[:,'percent'] = self.data['bet_amount'].copy() / self.table.loc[self.data['bet_user_id'].copy(), 'amount'].copy().values
+        self.data['payouts'] = round(self.data['bet_amount'] + self.table.loc[self.data['bet_user_id'], 'loser_wagers'].values * self.data['percent']).astype(int)
+        self.data.loc[:, 'payouts'] = self.data[['payouts', 'bet_amount']].apply(lambda row: max(row['payouts'], row['bet_amount']*1.25), axis=1)
 
 
     def add_bet(self, new_row):
@@ -138,9 +170,26 @@ class Bet:
         self.calcpool()
         self.calctable()
         self.calcpayouts()
-        
+    
+    def get_payouts(self, correct_id):
+        return self.data[self.data['bet_user_id']==correct_id]['payouts'].to_dict()
 
-    # def __str__():
+    def no_bets(self):
+        return self.data.empty
+
+    def __str__(self):
+        if self.no_bets(): return 'No bets yet'
+        else:
+            resp = self.table[['amount', 'percent']]
+            resp.loc[:,'vis'] = ['█{message:{fill}<10}'.format(message = int(p*10)*'█', fill = '▒') for p in resp['percent'].values]
+            resp.loc[:,'percent'] = (100*resp['percent']).round(1).astype(str) + '%'
+            resp.columns = ['total bets', '%', '']
+            resp.index.names = ['dumbass candidates']
+            return f'''
+```
+{resp}
+```
+'''
 
 
 
@@ -149,4 +198,9 @@ if __name__ == "__main__":
     print(dm.bets.data)
     print(dm.bets.table)
     # dm.clearbets()
-    print(dm.no_bets())
+    # print(dm.no_bets())
+    print(dm.bets.get_payouts(3))
+    # print(dm.bets)
+    # print('{:10}'.format(6*'a'))
+    # print(dm.stats(294910192154443779,[1,2,3,294910192154443779], 'min'))
+    print(dm.bets)
