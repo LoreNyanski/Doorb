@@ -55,9 +55,9 @@ REQUIREMENT_HIVEMIND = 3
 # Globals
 last_message = ''
 client.insults = ['Idiot', 'Dumbass', 'Stupid', 'Unintelligent', 'Fool', 'Moron', 'Dummy', 'Daft', 'Unwise', 'Half-baked',
-                  'Knobhead', 'Hingedly-impaired', 'Architectally challenged', 'Ill-advised', 'Imbecile', 'Dim', 'Unthinking', 'Half-witted']
-# client.active_sticker = tracked_sticker
-client.active_sticker = test_sticker
+                  'Knobhead', 'Hingedly-impaired', 'Architectually challenged', 'Ill-advised', 'Imbecile', 'Dim', 'Unthinking', 'Half-witted']
+client.active_sticker = int(tracked_sticker)
+# client.active_sticker = int(test_sticker)
 
 # -----------------------------------------------------------------------------------------
 #                                    Functions
@@ -148,7 +148,6 @@ async def on_ready():
     print(f'{client.user} has logged in\n\nConnected to the following guilds:')
     for guild in client.guilds:
         print(f'    {guild.name} (id: {guild.id})')
-        await get_all_dumbasses(guild)
 
 @client.event
 async def on_guild_available(guild):
@@ -159,6 +158,8 @@ async def on_guild_available(guild):
 async def on_guild_join(guild):
     if str(guild.id) not in [main_guild, test_guild]:
         await guild.leave()
+    else:
+        await get_all_dumbasses(guild)
 
 # Message handler
 @client.event
@@ -214,9 +215,13 @@ async def on_message(message):
         dm.new_dumbass(message.author.id, message.created_at)
         if rndm(CHANCE_DUMBASS):
             response = random.choice(client.insults)
-            message.reply(response)
+            await message.reply(response)
         if not dm.no_bets():
             response = str(dm.bets)
+            for user_id in dm.bets.get_dumbass_candidates():
+                str_id = str(user_id)
+                username = f'{message.guild.get_member(user_id).name:<{len(str_id)}}'
+                response = response.replace(str_id, username)
             pays = finish_bet(message.author.id)
             response = '''
 # BETS OVER!
