@@ -188,6 +188,10 @@ class Bet:
     def get_payouts(self, correct_id):
         return self.data[self.data['bet_user_id']==correct_id]['payouts'].to_dict()
 
+    def get_dumbass_candidates(self):
+        table = pd.Series()
+        return self.table.index.to_list()
+
     def no_bets(self):
         return self.data.empty
 
@@ -195,8 +199,10 @@ class Bet:
         if self.no_bets(): return 'No bets yet'
         else:
             resp = self.table[['amount', 'percent']]
-            resp.loc[:,'vis'] = ['█{message:{fill}<10}'.format(message = int(p*10)*'█', fill = '▒') for p in resp['percent'].values]
-            resp.loc[:,'percent'] = (100*resp['percent']).round(1).astype(str) + '%'
+            resp['format'] = resp['percent'].apply(lambda x: f"{x * 100:.1f}%")
+            resp['vis'] = resp['percent'].apply(lambda x: '█{message:{fill}<10}'.format(message = int(x*10)*'█', fill = '▒'))
+            resp.drop(columns = 'percent', inplace=True)
+
             resp.columns = ['total bets', '%', '']
             resp.index.names = ['dumbass candidates']
             return f'''

@@ -16,12 +16,21 @@ from door_manager import Door_manager
 from dotenv import load_dotenv
 # from games import
 
-
+'''
+TODO LIST
+- Send embeds instead of messages.
+- Make statistics more interpretable.
+- 
+'''
 
 load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
 shibe = os.getenv('shibe')
 filepath = os.getenv('filepath')
+test_guild = os.getenv('test_guild')
+main_guild = os.getenv('main_guild')
+tracked_sticker = os.getenv('tracked_sticker')
+test_sticker = os.getenv('test_sticker')
 
 # TODO: proper intents my guy
 intents = discord.Intents.all()
@@ -47,10 +56,8 @@ REQUIREMENT_HIVEMIND = 3
 last_message = ''
 client.insults = ['Idiot', 'Dumbass', 'Stupid', 'Unintelligent', 'Fool', 'Moron', 'Dummy', 'Daft', 'Unwise', 'Half-baked',
                   'Knobhead', 'Hingedly-impaired', 'Architectally challenged', 'Ill-advised', 'Imbecile', 'Dim', 'Unthinking', 'Half-witted']
-# client.active_sticker = 1305957931304615997
-
-# this is a test sticker
-client.active_sticker = 1321199183851687966 
+# client.active_sticker = tracked_sticker
+client.active_sticker = test_sticker
 
 # -----------------------------------------------------------------------------------------
 #                                    Functions
@@ -69,7 +76,12 @@ def finish_bet(correct_id) -> dict:
     dm.clearbets()
     return pay
 
-async def get_all_dumbasses(guild):
+async def get_all_dumbasses(guild, test=False):
+    # if its the test guild and were not testing then don't fetch shit from here
+    if str(guild.id) == test_guild and not test:
+        print('test guild skipped')
+        return
+    
     dm.cleardata()
     for channel in guild.channels:
         if isinstance(channel, discord.TextChannel):
@@ -127,17 +139,26 @@ def door_check(message) -> bool:
 # async def on_error(event, *args, **kwargs):
     # print(f'I just shat myself at {event}')
 
+
+
+
 # On ready handler
 @client.event
 async def on_ready():
     print(f'{client.user} has logged in\n\nConnected to the following guilds:')
     for guild in client.guilds:
         print(f'    {guild.name} (id: {guild.id})')
-        # await get_all_dumbasses(guild)
+        await get_all_dumbasses(guild)
 
-# @client.event
-# async def on_guild_available(guild):
-    # await get_all_dumbasses(guild)
+@client.event
+async def on_guild_available(guild):
+    if str(guild.id) not in [main_guild, test_guild]:
+        await guild.leave()
+
+@client.event
+async def on_guild_join(guild):
+    if str(guild.id) not in [main_guild, test_guild]:
+        await guild.leave()
 
 # Message handler
 @client.event
@@ -243,10 +264,11 @@ Welcome to doorbot!
 I am here to tell you who's the biggest dumbass on your discord server.
 
 List of commands:
-    help - youre reading it rn idiot
-    stats [optional: statistic] - displays your stats or the leaderboard in provided statistic on the server
-    bet [optional:user] [optional:amount] - place a bet on who will be the next dumbass. If none provided displays the current bets
-    rollies - gamba
+- !help - youre reading it rn idiot
+- !stats [optional: mean, median, max, min, count, last] - displays your stats or the leaderboard in provided statistic on the server
+- !bet [optional:user] [optional:amount] - place a bet on who will be the next dumbass. If none provided displays the current bets
+- !balance - how poor you are
+- !rollies - gamba
     '''
     
     await ctx.send(response)
@@ -297,7 +319,7 @@ Current streak:   {res[5]}
             case 'median': response = 'Median of time between incidents:' + response
             case 'max': response = 'Longest streak without incidents:' + response
             case 'min': response = 'Shortest streak without incidents:' + response
-            case 'last': response = 'Current streak without incidents:' + response
+            case 'last': response = 'Current streaks:' + response
         await ctx.send(response)
         return
     else:   
@@ -306,9 +328,18 @@ Current streak:   {res[5]}
 
 # allows you to place bets on who will be the next to fail an int check
 @client.command()
-async def bets(ctx, *args):
+async def bet(ctx, *args):
     if len(args) == 0:
-        await ctx.send(str(dm.bets))
+        response = str(dm.bets)
+        try:
+            for user_id in dm.bets.get_dumbass_candidates():
+                str_id = str(user_id)
+                username = f'{ctx.guild.get_member(user_id).name:<{len(str_id)}}'
+                response = response.replace(str_id, username)
+        except:
+            print('the bet was empty and i shat myself :(')
+
+        await ctx.send(response)
         # display current bets
 
     elif len(args) == 2:
@@ -345,11 +376,6 @@ async def bets(ctx, *args):
 
 # just straight up blackjack
 # async def blackjack(ctx):
-    # response = '''
-# You fool, you buffoon, you thought I already implemented this?? 
-    # - Lore
-# '''
-    # await ctx.send(response)
 
 # daily roll between 1 and 1000 - make it look like the google rng - 
 @client.command()
@@ -396,11 +422,6 @@ That being said enjoy your gamba:
 
 # @client.command
 # async def woke_trivia(ctx):
-    # response = '''
-# You fool, you buffoon, you thought I already implemented this?? 
-    # - Lore
-# '''
-    # await ctx.send(response)
 
 # @client.command()
 # async def wild_magic(ctx):
