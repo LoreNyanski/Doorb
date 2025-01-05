@@ -20,7 +20,9 @@ from dotenv import load_dotenv
 TODO LIST
 - Send embeds instead of messages.
 - Make statistics more interpretable.
-- 
+- on message delete 
+- list of all incidents of a user with jump links
+- hivemind automatically activates in new channels
 '''
 
 load_dotenv()
@@ -49,7 +51,7 @@ dm = Door_manager()
 CHANCE_AMOGUS = 5
 CHANCE_DAD = 5
 CHANCE_HIVEMIND = 2
-CHANCE_DUMBASS = 2
+CHANCE_DUMBASS = 1
 REQUIREMENT_HIVEMIND = 3
 
 # Globals
@@ -151,15 +153,21 @@ async def on_ready():
 
 @client.event
 async def on_guild_available(guild):
-    if str(guild.id) not in [main_guild, test_guild]:
-        await guild.leave()
+    pass
+    # if str(guild.id) not in [main_guild, test_guild]:
+        # await guild.leave()
 
 @client.event
 async def on_guild_join(guild):
-    if str(guild.id) not in [main_guild, test_guild]:
-        await guild.leave()
-    else:
-        await get_all_dumbasses(guild)
+    pass
+    # if str(guild.id) not in [main_guild, test_guild]:
+        # await guild.leave()
+#    await get_all_dumbasses(guild)
+
+@client.event
+async def on_message_removed(message):
+    pass
+
 
 # Message handler
 @client.event
@@ -220,13 +228,12 @@ async def on_message(message):
             response = str(dm.bets)
             for user_id in dm.bets.get_dumbass_candidates():
                 str_id = str(user_id)
-                username = f'{message.guild.get_member(user_id).name:<{len(str_id)}}'
+                username = f'{client.get_guild(1287871806534848563).get_member(user_id).name:<{len(str_id)}}'
                 response = response.replace(str_id, username)
             pays = finish_bet(message.author.id)
             response = '''
 # BETS OVER!
-Correct guessers: {}
-'''.format(', '.join([message.guild.get_member(id).name for id in pays])) + response
+Correct guessers: {}'''.format(', '.join([client.get_guild(1287871806534848563).get_member(id).name for id in pays])).replace('_', '\_') + response
         
             await message.channel.send(content=response)
 
@@ -274,6 +281,14 @@ List of commands:
 - !bet [optional:user] [optional:amount] - place a bet on who will be the next dumbass. If none provided displays the current bets
 - !balance - how poor you are
 - !rollies - gamba
+
+Coming soon™:
+- !incidents - a list of timestamps to all of your door check fails
+- !woke - youll see
+- deleting incidents deleting instances in the database aswell
+- more interpretable statistics (lets be honest the current one is crap)
+- doorbot messages using embeds instead of textbox
+- !kys
     '''
     
     await ctx.send(response)
@@ -282,13 +297,22 @@ List of commands:
 #                                   Door shenanigans
 # -----------------------------------------------------------------------------------------
 
+@client.command()
+async def incidents(ctx, *args):
+    pass
+
 # List statistics for yourself
 @client.command()
 async def stats(ctx, *args):
     if len(args) == 0:
-        # TODO: time since last incident
-        res = dm.stats(ctx.author.id, 0, 'self')
-        res = [res[0]]+[format_deltatime(time) for time in res[1:]]
+        raw_stats = dm.stats(ctx.author.id, 0, 'self')
+        try:
+            res = [raw_stats[0]]+[format_deltatime(time) for time in raw_stats[1:]]
+        except:
+            try:
+                res = [raw_stats[0]] + ['   Data needed'] * 4 + [format_deltatime(raw_stats[2])]
+            except:
+                res = [raw_stats[0]] + ['   Data needed'] * 5
         response = f'''
 {ctx.author.name}'s stats:
 ```
@@ -336,13 +360,10 @@ Current streak:   {res[5]}
 async def bet(ctx, *args):
     if len(args) == 0:
         response = str(dm.bets)
-        try:
-            for user_id in dm.bets.get_dumbass_candidates():
-                str_id = str(user_id)
-                username = f'{ctx.guild.get_member(user_id).name:<{len(str_id)}}'
-                response = response.replace(str_id, username)
-        except:
-            print('the bet was empty and i shat myself :(')
+        for user_id in dm.bets.get_dumbass_candidates():
+            str_id = str(user_id)
+            username = f'{client.get_guild(1287871806534848563).get_member(user_id).name:<{len(str_id)}}'
+            response = response.replace(str_id, username)
 
         await ctx.send(response)
         # display current bets

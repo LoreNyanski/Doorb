@@ -125,7 +125,10 @@ class Door_manager:
                 ehe = ehe + pd.Series(self.data[user_id], name='ehe').diff().aggregate(['mean', 'median', 'max', 'min']).to_list()
                 ehe = ehe + [datetime.datetime.now(tz=datetime.timezone.utc) - self.get_last_incident(user_id)]
             else:
-                ehe = 'Not enough data'
+                try:
+                    ehe = [len(self.data[user_id]), 'Data needed', datetime.datetime.now(tz=datetime.timezone.utc) - self.get_last_incident(user_id)]
+                except:
+                    ehe = [len(self.data[user_id]), 'Data needed']
         else:
             # This way it takes the users from only ppl who already have data in csv, not the entire server
             # user_ids = self.data.keys()
@@ -215,12 +218,13 @@ class Bet:
 
 if __name__ == "__main__":
     dm = Door_manager()
-    print(dm.bets.data)
-    print(dm.bets.table)
+    # print(dm.bets.data)
+    # print(dm.bets.table)
     # dm.clearbets()
     # print(dm.no_bets())
-    print(dm.bets.get_payouts(3))
+    # print(dm.bets.get_payouts(3))
     # print(dm.bets)
     # print('{:10}'.format(6*'a'))
     # print(dm.stats(294910192154443779,[1,2,3,294910192154443779], 'min'))
-    print(dm.bets)
+    # print(dm.bets)
+    print(dm.get_last_incident(0))
