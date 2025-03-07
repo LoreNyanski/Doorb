@@ -120,6 +120,27 @@ class Door_manager:
         else:
             self.data.pop(user_id)
 
+    def getall_incidents(self, user_ids):
+        lst = [data 
+               for user in user_ids
+               for data in self.data[user]]
+        lst.sort()
+        return lst
+
+    def serverstats(self, user_ids):
+        lst = self.getall_incidents(user_ids)
+        if len(lst) > 1:
+            ehe = [len(lst)]
+            ehe = ehe + pd.Series(lst, name='ehe').diff().aggregate(['mean', 'median', 'max', 'min']).to_list()
+            ehe = ehe + [datetime.datetime.now(tz=datetime.timezone.utc) - lst[-1]]
+        else:
+            try:
+                ehe = [len(lst), 'Data needed', datetime.datetime.now(tz=datetime.timezone.utc) - lst[-1]]
+            except:
+                ehe = [len(lst), 'Data needed']
+        return ehe
+
+        
 
     def stats(self, user_id, user_ids, stat):
         if stat == 'self':
@@ -223,6 +244,7 @@ class Bet:
 
 if __name__ == "__main__":
     dm = Door_manager()
+
     # print(dm.bets.data)
     # print(dm.bets.table)
     # dm.clearbets()

@@ -32,7 +32,7 @@ TODO LIST
 
 '''
 This patch:
-- add balance to stats (see whos richest)
+- add balance to stats (see whos richest) - DONE (theoretically)
 - serverstats check the COLLECTIVE streaks and incidents (serverstats mean gives a leaderboard)
 - o7 reactor
 - catlike typing detected
@@ -146,7 +146,10 @@ def format_deltatime(time: datetime.timedelta) -> str:
     return ret
 
 def format_stats(user: discord.User) -> str:
-    raw_stats = dm.stats(user.id, 0, 'self')
+    if isinstance(user, discord.User):
+        raw_stats = dm.stats(user.id, 0, 'self')
+    else:
+        raw_stats = dm.serverstats([member.id for member in user.members])
     try:
         res = [raw_stats[0]]+[format_deltatime(time) for time in raw_stats[1:]]
     except:
@@ -398,7 +401,11 @@ async def stats(ctx, *args):
     if ctx.message.mentions:
         response = format_stats(ctx.message.mentions[0])
         await ctx.send(response)
-        return 
+        return
+    if arg == 'server':
+        response = format_stats(ctx.guild)
+        await ctx.send(response)
+        return
     elif arg in ['mean', 'count', 'median', 'max', 'min', 'last']:
         stat = arg
         res = dm.stats(ctx.author.id, [member.id for member in ctx.guild.members], stat)
