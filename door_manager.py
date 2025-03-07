@@ -77,6 +77,11 @@ class Door_manager:
         return today_midnight - (self.get_last_daily(user_id)+ams_offset)
     def get_last_incident(self, user_id):
         return self.data[user_id][-1]
+    def get_all_last_incident(self, member_ids):
+        return max([self.data[member][-1]
+                    for member in member_ids])
+    def get_all_longest_streak(self, member_ids):
+        return pd.Series(self.getall_incidents(member_ids), name='ehe').diff().max()
 
     # Change money of user
     def add_money(self, user_id, amount):

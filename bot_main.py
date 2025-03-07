@@ -34,7 +34,9 @@ TODO LIST
 This patch:
 - add balance to stats (see whos richest) - DONE (theoretically)
 - serverstats check the COLLECTIVE streaks and incidents (serverstats mean gives a leaderboard) - DONE (theoretically)
-- o7 reactor
+- o7 reactor - DONE (theoretically)
+- sticker display what streak you just broke - DONE (theoretically)
+- serverstats display how much everyone contributed
 - catlike typing detected
 - some kind of yo mama
 
@@ -77,7 +79,7 @@ CHANCE_DAD = 15
 CHANCE_FUCKING = 15
 CHANCE_HIVEMIND = 2
 CHANCE_DUMBASS = 1
-CHANCE_GENERAL = 2
+CHANCE_SALUTE = 2
 REQUIREMENT_HIVEMIND = 3
 
 # Globals
@@ -201,7 +203,7 @@ def fucking_check(message) -> bool:
     return re.search(r"\S+ fucking? \S+", message.content, re.IGNORECASE) and rndm(CHANCE_FUCKING)
 
 def salute_check(message) -> bool:
-    return re.search(r"general|major|lieutenant|captain|colonel \S+", message.content, re.IGNORECASE) and rndm(CHANCE_GENERAL)
+    return re.search(r"general|major|lieutenant|captain|colonel \S+", message.content, re.IGNORECASE) and rndm(CHANCE_SALUTE)
 
 def door_check(message) -> bool:
     if message.stickers:
@@ -307,9 +309,11 @@ async def on_message(message: discord.Message):
 
     # sticker check
     if door_check(message):
+        time = message.created_at - dm.get_all_last_incident([member.id for member in message.guild.members])
         dm.new_dumbass(message.author.id, message.created_at)
+        response = ''
         if rndm(CHANCE_DUMBASS):
-            response = random.choice(client.insults)
+            response = random.choice(client.insults) + '\nYou ruined a ' + format_deltatime(time) + ' long streak >:('
             await message.reply(response)
         if not dm.no_bets():
             response = str(dm.bets)
@@ -361,14 +365,14 @@ Current bet: {"None" if bt[0]==0 else client.get_guild(1287871806534848563).get_
 @client.command()
 async def help(ctx):
     response = '''
-Welcome to doorbot!
+Welcome to doorbot! 
 
 I am here to tell you who's the biggest dumbass on your discord server.
 
 List of commands:
 - !help - youre reading it rn idiot
-- !stats [optional: User ping | mean, median, max, min, count, last] - displays your/someone else's stats or the leaderboard in provided statistic on the server
-- !bet [optional:user] [optional:amount] - place a bet on who will be the next dumbass. If none provided displays the current bets
+- !stats [optional: @user | server | mean, median, max, min, count, last, money] - displays your/someone else's stats | the server's collective stats | the leaderboard in provided statistic on the server
+- !bet [optional:user amount] - place a bet on who will be the next dumbass. If none provided displays the current bets
 - !balance - how poor you are, who you bet on
 - !rollies - gamba
 
@@ -378,12 +382,12 @@ Coming soon™:
 - deleting incidents deleting instances in the database aswell
 - more interpretable statistics (lets be honest the current one is crap)
 - doorbot messages using embeds instead of textbox
-- !kys
 
 Patch notes:
-- pingable bet and stats
-- no longer float money
-- !balance and !bet now shows your current bet
+- !stats has a money leaderboard
+- !stats has a server option to check the collective idiocy
+- incidents now let you know how long of a collective streak you just broke
+and more...
     '''
     
     await ctx.send(response)
@@ -531,17 +535,26 @@ That being said enjoy your gamba:
 ```
 '''
     await ctx.send(response)
-    if result == 1000:
-        sleep(0.8)
-        await ctx.send('HOLY SHIIIT')
-        sleep(0.5)
-        await ctx.send(f'<@{shibe}>')
-        sleep(1)
-        await ctx.send(f'IT FINALLY HAPPENED!!1! <@{shibe}>')
-        sleep(0.4)
-        await ctx.send(f'<@{shibe}>')
-        sleep(1.1)
-        await ctx.send(f'you owe me a cookie :D')
+    match result:
+        case 1:
+            pass # TODO
+        case 15:
+            pass
+        case 69:
+            await ctx.send('nice')
+        case 420:
+            pass
+        case 1000:
+            sleep(1.8)
+            await ctx.send('HOLY SHIIIT')
+            sleep(0.5)
+            await ctx.send(f'<@{shibe}>')
+            sleep(1)
+            await ctx.send(f'IT FINALLY HAPPENED!!1! <@{shibe}>')
+            sleep(0.4)
+            await ctx.send(f'<@{shibe}>')
+            sleep(1.1)
+            await ctx.send(f'you owe me a cookie :D')
     return
 
 @client.command
