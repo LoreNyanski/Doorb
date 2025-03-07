@@ -6,7 +6,8 @@ import bisect
 from collections import defaultdict
 
 
-default_values_userdata = {'money':500,'last_daily':pd.to_datetime(0),'bet_user_id':0,'bet_amount':0}
+default_values_userdata = {'money':500,'last_daily':datetime.datetime.now(datetime.timezone.utc)-datetime.timedelta(days=1),'bet_user_id':0,'bet_amount':0}
+ams_offset = datetime.timedelta(hours=1)
 pd.options.mode.chained_assignment = None # I don't care pandas
 
 class Door_manager:
@@ -14,25 +15,25 @@ class Door_manager:
     # Load data
     def __init__(self):
         self.data = defaultdict(list)
-        with open('.\\csv\\data.csv') as file:
+        with open('./csv/data.csv') as file:
             for row in csv.reader(file):
                 self.data[int(row[0])] = list(pd.to_datetime(row[1:]))
 
-        self.userdata = pd.read_csv('.\\csv\\userdata.csv')
+        self.userdata = pd.read_csv('./csv/userdata.csv')
         self.userdata.set_index(['user_id'], inplace=True)
-        self.userdata['last_daily'] = pd.to_datetime(self.userdata['last_daily'])
+        self.userdata['last_daily'] = pd.to_datetime(self.userdata['last_daily'], utc=True)
 
         self.bets = Bet(self.userdata[['bet_user_id', 'bet_amount']])
     
     # save datas
     def save_data(self):
-        with open('.\\csv\\data.csv', mode='w', newline='') as file:  
+        with open('./csv/data.csv', mode='w', newline='') as file:  
             writer = csv.writer(file)
             for user_id in self.data:
                 writer.writerow([user_id] + self.data[user_id])
 
     def save_userdata(self):
-        self.userdata.to_csv('.\\csv\\userdata.csv')
+        self.userdata.to_csv('./csv/userdata.csv')
     
 
 
@@ -71,7 +72,9 @@ class Door_manager:
         self.user_pre(user_id)
         return self.userdata.loc[user_id, 'last_daily']
     def get_delta_daily(self, user_id):
-        return datetime.datetime.now() - self.get_last_daily(user_id)
+        # return datetime.datetime.now(datetime.timezone.utc) - self.get_last_daily(user_id)
+        today_midnight = (datetime.datetime.now(datetime.timezone.utc)+ams_offset).replace(hour=0,minute=0,second=0,microsecond=0)
+        return today_midnight - (self.get_last_daily(user_id)+ams_offset)
     def get_last_incident(self, user_id):
         return self.data[user_id][-1]
 
@@ -86,22 +89,22 @@ class Door_manager:
     def new_dumbass(self, user_id, time):
         bisect.insort(self.data[user_id], time)
         return
-    
 
     # Add money from daily
     @op_userdata
-    def daily(self, user_id, amount):
+    def daily(self, user_id, amount, date: datetime.datetime):
         self.add_money(user_id, amount)
-        self.userdata.loc[user_id, 'last_daily'] = datetime.datetime.now()
+        self.userdata.loc[user_id, 'last_daily'] = date
 
     # Register bet in userdata
     @op_userdata
-    def place_bet(self, user_id, bet_user_id, bet_amount):
+    def place_bet(self, user_id, bet_user_id: int, bet_amount):
         self.add_money(user_id, self.userdata.loc[user_id, 'bet_amount'])
         self.userdata.loc[user_id, 'bet_user_id'] = bet_user_id
         self.userdata.loc[user_id, 'bet_amount'] = bet_amount
         self.add_money(user_id, -1*bet_amount)
-        self.bets.add_bet(self.userdata.loc[user_id])
+        # self.bets.add_bet(self.userdata.loc[user_id])
+        self.bets = Bet(self.userdata[['bet_user_id', 'bet_amount']])
 
     # clear all bets in userdata
     @op_userdata
@@ -134,6 +137,9 @@ class Door_manager:
             # user_ids = self.data.keys()
             if stat == 'count':
                 ehe = [(user, len(self.data[user])) for user in user_ids]
+                ehe.sort(key= lambda x: x[1], reverse=True)
+            elif stat == 'money':
+                ehe = [(user, self.get_money(user)) for user in user_ids]
                 ehe.sort(key= lambda x: x[1], reverse=True)
             elif stat == 'last':
                 ehe = []
@@ -179,11 +185,11 @@ class Bet:
     def calcpayouts(self):
         self.data.loc[:,'percent'] = self.data['bet_amount'].copy() / self.table.loc[self.data['bet_user_id'].copy(), 'amount'].copy().values
         self.data['payouts'] = round(self.data['bet_amount'] + self.table.loc[self.data['bet_user_id'], 'loser_wagers'].values * self.data['percent']).astype(int)
-        self.data.loc[:, 'payouts'] = self.data[['payouts', 'bet_amount']].apply(lambda row: max(row['payouts'], row['bet_amount']*1.25), axis=1)
+        self.data.loc[:, 'payouts'] = self.data[['payouts', 'bet_amount']].apply(lambda row: max(row['payouts'], int(row['bet_amount']*1.25)), axis=1)
 
 
     def add_bet(self, new_row):
-        self.data.loc[new_row.name] = [new_row['bet_user_id'], new_row['bet_amount'], None, None]
+        self.data = pd.concat([self.data[['bet_user_id', 'bet_amount']].copy(), new_row.loc[['bet_user_id', 'bet_amount']].to_frame().T])
         self.calcpool()
         self.calctable()
         self.calcpayouts()
@@ -192,7 +198,6 @@ class Bet:
         return self.data[self.data['bet_user_id']==correct_id]['payouts'].to_dict()
 
     def get_dumbass_candidates(self):
-        table = pd.Series()
         return self.table.index.to_list()
 
     def no_bets(self):
@@ -227,4 +232,24 @@ if __name__ == "__main__":
     # print('{:10}'.format(6*'a'))
     # print(dm.stats(294910192154443779,[1,2,3,294910192154443779], 'min'))
     # print(dm.bets)
-    print(dm.get_last_incident(0))
+    # print(dm.get_last_incident(0))
+    
+
+    # print(datetime.datetime.now())
+    # print(datetime.datetime.combine(datetime.date.today(), datetime.time()).astimezone(datetime.timezone.utc) - pd.to_datetime('2025-01-10 16:32:52.751600', utc=True))
+    # print((datetime.datetime.now(datetime.timezone.utc)+datetime.timedelta(hours=1)))
+    # print(datetime.datetime.now(datetime.timezone.utc))
+    # print((datetime.datetime.now(datetime.timezone.utc)+datetime.timedelta(hours=1)).replace(hour=0,minute=0,second=0,microsecond=0) - pd.to_datetime('2025-01-11 16:32:52.751600', utc=True))
+    
+    
+'''
+now:
+0.30 - utc: 23.30 yesterday
+
+last rolly:
+5 am yesterday - utc: 2am
+
+
+
+
+'''
