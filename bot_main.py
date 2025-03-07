@@ -33,7 +33,7 @@ TODO LIST
 '''
 This patch:
 - add balance to stats (see whos richest) - DONE (theoretically)
-- serverstats check the COLLECTIVE streaks and incidents (serverstats mean gives a leaderboard)
+- serverstats check the COLLECTIVE streaks and incidents (serverstats mean gives a leaderboard) - DONE (theoretically)
 - o7 reactor
 - catlike typing detected
 - some kind of yo mama
@@ -77,6 +77,7 @@ CHANCE_DAD = 15
 CHANCE_FUCKING = 15
 CHANCE_HIVEMIND = 2
 CHANCE_DUMBASS = 1
+CHANCE_GENERAL = 2
 REQUIREMENT_HIVEMIND = 3
 
 # Globals
@@ -199,6 +200,9 @@ def dad_check(message) -> bool:
 def fucking_check(message) -> bool:
     return re.search(r"\S+ fucking? \S+", message.content, re.IGNORECASE) and rndm(CHANCE_FUCKING)
 
+def salute_check(message) -> bool:
+    return re.search(r"general|major|lieutenant|captain|colonel \S+", message.content, re.IGNORECASE) and rndm(CHANCE_GENERAL)
+
 def door_check(message) -> bool:
     if message.stickers:
         return client.active_sticker in [stckr.id for stckr in message.stickers]
@@ -244,7 +248,7 @@ async def on_message_removed(message):
 
 # Message handler
 @client.event
-async def on_message(message):
+async def on_message(message: discord.Message):
     global last_message
 
     # Dont respond to your own message idiot
@@ -289,12 +293,17 @@ async def on_message(message):
 
         await message.channel.send(content=response)
 
+    # fucking feature
     elif fucking_check(message):
         words = [i for i in message.content.split() if i != '']
         fuking = [i for i, word in enumerate(words) if re.match(r"fucking?", word, re.IGNORECASE)][0]
         response = words[fuking - 1] + " is doing WHAT to " + words[fuking + 1] + " now???"
 
         await message.reply(content=response)
+
+    # Salute react
+    elif salute_check(message):
+        await message.add_reaction('🫡')
 
     # sticker check
     if door_check(message):
