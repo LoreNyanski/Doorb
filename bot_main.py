@@ -54,7 +54,7 @@ This patch:
 load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
 shibe = os.getenv('shibe')
-filepath = os.getenv('filepath')
+
 test_guild = os.getenv('test_guild')
 main_guild = os.getenv('main_guild')
 tracked_sticker = os.getenv('tracked_sticker')
@@ -90,6 +90,7 @@ last_message = ''
 client.insults = ['Idiot', 'Dumbass', 'Stupid', 'Unintelligent', 'Fool', 'Moron', 'Dummy', 'Daft', 'Unwise', 'Half-baked',
                   'Knobhead', 'Hingedly-impaired', 'Architectually challenged', 'Ill-advised', 'Imbecile', 'Dim', 'Unthinking',
                   'Half-witted', 'Low intelligence specimen']
+client.punishments = ['execution', 'emojify', 'force-luka', 'uwu-ify', '']
 client.active_sticker = int(tracked_sticker)
 # client.active_sticker = int(test_sticker)
 
