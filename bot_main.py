@@ -44,7 +44,7 @@ This patch:
   - if possible, lot of punishments
 - things to spend money on
   - clown compressing
-  - exchange money for @everyone
+  - exchange money for @everyone - DONE (theoretically)
 - elden ring message creator
 - !kys
 
@@ -52,6 +52,8 @@ This patch:
 
 
 load_dotenv()
+TEST_MODE = True
+
 TOKEN = os.getenv('DISCORD_TOKEN')
 shibe = os.getenv('shibe')
 
@@ -90,9 +92,16 @@ last_message = ''
 client.insults = ['Idiot', 'Dumbass', 'Stupid', 'Unintelligent', 'Fool', 'Moron', 'Dummy', 'Daft', 'Unwise', 'Half-baked',
                   'Knobhead', 'Hingedly-impaired', 'Architectually challenged', 'Ill-advised', 'Imbecile', 'Dim', 'Unthinking',
                   'Half-witted', 'Low intelligence specimen']
-client.punishments = ['execution', 'emojify', 'force-luka', 'uwu-ify', '']
+client.punishments = ['execution', 'emojify', 'force-luka', 'uwu-ify', 'old_english']
+
 client.active_sticker = int(tracked_sticker)
-# client.active_sticker = int(test_sticker)
+client.active_guild = int(main_guild)
+
+if TEST_MODE:
+    client.active_sticker = int(test_sticker)
+    client.active_guild = int(test_guild)
+    
+    
 
 # -----------------------------------------------------------------------------------------
 #                                    Functions
@@ -111,9 +120,9 @@ def finish_bet(correct_id) -> dict:
     dm.clearbets()
     return pay
 
-async def get_all_dumbasses(guild, test=False):
+async def get_all_dumbasses(guild):
     # if its the test guild and were not testing then don't fetch shit from here
-    if str(guild.id) == test_guild and not test:
+    if TEST_MODE:
         print('test guild skipped')
         return
     
@@ -260,6 +269,7 @@ async def on_guild_join(guild):
 
 @client.event
 async def on_message_removed(message):
+    # IF IT WAS A STICKER MESSAGE THEN REMOVE THE INCIDENT
     pass
 
 
@@ -334,12 +344,12 @@ async def on_message(message: discord.Message):
             response = str(dm.bets)
             for user_id in dm.bets.get_dumbass_candidates():
                 str_id = str(user_id)
-                username = f'{client.get_guild(1287871806534848563).get_member(user_id).name:<{len(str_id)}}'
+                username = f'{client.get_guild(client.active_guild).get_member(user_id).name:<{len(str_id)}}'
                 response = response.replace(str_id, username)
             pays = finish_bet(message.author.id)
             response = '''
 # BETS OVER!
-Correct guessers: {}'''.format(', '.join([client.get_guild(1287871806534848563).get_member(int(id)).name for id in pays])).replace('_', '\_') + response
+Correct guessers: {}'''.format(', '.join([client.get_guild(client.active_guild).get_member(int(id)).name for id in pays])).replace('_', '\_') + response
         
             await message.channel.send(content=response)
 
@@ -365,14 +375,14 @@ async def balance(ctx):
         response = f'''
 Daily available :D
 You're balance: {dm.get_money(ctx.author.id)} *({dm.get_money(ctx.author.id) + bt[1]})*
-Current bet: {"None" if bt[0]==0 else client.get_guild(1287871806534848563).get_member(bt[0]).name} {bt[1]}
+Current bet: {"None" if bt[0]==0 else client.get_guild(client.active_guild).get_member(bt[0]).name} {bt[1]}
 '''
     else:  
         delta_time = today_midnight - now
         response = f'''
 Daily available in {delta_time.seconds//3600} hour(s) {(delta_time.seconds%3600)//60} minute(s).
 You're balance: {dm.get_money(ctx.author.id)} *({dm.get_money(ctx.author.id) + bt[1]})*
-Current bet: {"None" if bt[0]==0 else client.get_guild(1287871806534848563).get_member(bt[0]).name} {bt[1]}
+Current bet: {"None" if bt[0]==0 else client.get_guild(client.active_guild).get_member(bt[0]).name} {bt[1]}
 '''
     await ctx.send(response)
 
@@ -478,11 +488,14 @@ async def stats(ctx, *args):
         response = format_stats(ctx.guild)
         await ctx.send(response)
         return
-    elif arg in ['mean', 'count', 'median', 'max', 'min', 'last']:
+    elif arg in ['mean', 'count', 'median', 'max', 'min', 'last', 'money']:
         stat = arg
         res = dm.stats(ctx.author.id, [member.id for member in ctx.guild.members], stat)
         if stat == 'count':
             res = [(ctx.guild.get_member(user_id).name, str(count)) for user_id, count in res[:10]]
+            longest_name = max([len(name) for name,time in res])
+        if stat == 'money':
+            res = [(ctx.guild.get_member(user_id).name, str(money)) for user_id, money in res[:10]]
             longest_name = max([len(name) for name,time in res])
         else:
             res = [(ctx.guild.get_member(user_id).name, format_deltatime(time) if not type(time)== str else '    Data needed') 
@@ -497,6 +510,7 @@ async def stats(ctx, *args):
             case 'max': response = 'Longest streak without incidents:' + response
             case 'min': response = 'Shortest streak without incidents:' + response
             case 'last': response = 'Current streaks:' + response
+            case 'money': response = 'Who has the most bisches (and cash):' + response
         await ctx.send(response)
         return
     else:   
@@ -508,12 +522,12 @@ async def stats(ctx, *args):
 async def bet(ctx, *args):
     if len(args) == 0:
         bt = dm.get_bet(ctx.author.id)
-        response = f'Your bet: {"None" if bt[0]==0 else client.get_guild(1287871806534848563).get_member(bt[0]).name} {bt[1]}\n'
+        response = f'Your bet: {"None" if bt[0]==0 else client.get_guild(client.active_guild).get_member(bt[0]).name} {bt[1]}\n'
         response = str(dm.bets)
         for user_id in dm.bets.get_dumbass_candidates():
             user_id =int(user_id)
             str_id = str(user_id)
-            username = f'{client.get_guild(1287871806534848563).get_member(user_id).name:<{len(str_id)}}'
+            username = f'{client.get_guild(client.active_guild).get_member(user_id).name:<{len(str_id)}}'
             response = response.replace(str_id, username)
 
         await ctx.send(response)
