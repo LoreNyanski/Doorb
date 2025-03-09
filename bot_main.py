@@ -80,7 +80,10 @@ CHANCE_FUCKING = 15
 CHANCE_HIVEMIND = 2
 CHANCE_DUMBASS = 1
 CHANCE_SALUTE = 2
+
 REQUIREMENT_HIVEMIND = 3
+
+COST_EVERYONE = 1000
 
 # Globals
 last_message = ''
@@ -180,7 +183,8 @@ def direct_mentions(message):
 def compress_clown(user, amount):
     dm.add_compr(user.id, amount)
     #apply compression
-    #
+
+
 # -----------------------------------------------------------------------------------------
 #                                    Predicates
 # -----------------------------------------------------------------------------------------
@@ -210,7 +214,17 @@ def door_check(message) -> bool:
         return client.active_sticker in [stckr.id for stckr in message.stickers]
     else: return False
 
+def money_check(user, amount) -> bool:
+    return dm.get_money(user.id) >= amount
 
+def can_redeem(user, item) -> bool:
+    time: datetime.datetime = datetime.datetime.now(tz=datetime.timezone.utc)
+    key = (user.id, item)
+    if key not in dm.shop:
+        return True
+    else:
+        last_time: datetime.datetime = dm.shop[key]
+        return (time - last_time).days >= 1
 # -----------------------------------------------------------------------------------------
 #                                    Events
 # -----------------------------------------------------------------------------------------
@@ -364,7 +378,7 @@ Current bet: {"None" if bt[0]==0 else client.get_guild(1287871806534848563).get_
 # Display list of commands
 @client.command()
 async def help(ctx):
-    response = '''
+    response = f'''
 Welcome to doorbot! 
 
 I am here to tell you who's the biggest dumbass on your discord server.
@@ -375,6 +389,13 @@ List of commands:
 - !bet [optional:user amount] - place a bet on who will be the next dumbass. If none provided displays the current bets
 - !balance - how poor you are, who you bet on
 - !rollies - gamba
+- !steal [amount] - lets you take money from others. But fuck around and eventually you will find out...
+- !buy [thing] - lets you buy things with your money
+
+Things (to buy) ((the cost is in {{}})):
+- everyone {{{COST_EVERYONE}}} - ping everyone. This will *surely* not get annoying very fast
+- increase_everyone [new cost] {{new cost}} - increase the cost of pinging eveyrone cuz honestly fuck that. NB: YOU *WILL* HAVE TO PAY AS MUCH AS THE COST YOU'RE TRYING TO SET IT TO
+- kys []
 
 Coming soon™:
 - !incidents - a list of timestamps to all of your door check fails
@@ -386,7 +407,8 @@ Coming soon™:
 Patch notes:
 - !stats has a money leaderboard
 - !stats has a server option to check the collective idiocy
-- incidents now let you know how long of a collective streak you just broke
+- incidents now let you know the streak you just broke (for extra shame value)
+- capitalism! and stealing!
 and more...
     '''
     
@@ -395,6 +417,42 @@ and more...
 # -----------------------------------------------------------------------------------------
 #                                   Door shenanigans
 # -----------------------------------------------------------------------------------------
+
+@client.command()
+async def buy(ctx, *args):
+    if len(args) == 0:
+        await ctx.send('Invalid arguments lol')
+        return
+    else:
+        arg = args[0]
+        match arg:
+            case 'everyone':
+                if not money_check(ctx.author, COST_EVERYONE):
+                    await ctx.send('cashless behaviour')
+                    return
+                if not can_redeem(ctx.author, 'everyone'):
+                    await ctx.send('yeah right. As if i would let you ping eveyrone more than once a day')
+                    return
+                dm.add_money(ctx.author.id, -1*COST_EVERYONE)
+                dm.shop[(ctx.author.id,'everyone')] = datetime.datetime.now(datetime.timezone.utc)
+                await ctx.send('@everyone')
+            case 'increase_everyone':
+                if not len(args) == 2:
+                    await ctx.send('Invalid arguments lol')
+                    return
+                new_cost = args[1]
+                if not new_cost > COST_EVERYONE:
+                    await ctx.send('you are *not* decreasing the price, sorry')
+                    return
+                if not money_check(ctx.author, new_cost):
+                    await ctx.send('you need to be able to afford the new price')
+                    return
+                dm.add_money(ctx.author.id, -1*new_cost)
+                COST_EVERYONE = new_cost
+                await ctx.send('An opressor has risen to deny the commonfolk its rights (price succesfully changed)')
+            case _:
+                await ctx.send('nah')
+                return
 
 @client.command()
 async def incidents(ctx, *args):

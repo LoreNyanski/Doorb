@@ -25,6 +25,8 @@ class Door_manager:
 
         self.bets = Bet(self.userdata[['bet_user_id', 'bet_amount']])
     
+        self.shop = {}
+
     # save datas
     def save_data(self):
         with open('./csv/data.csv', mode='w', newline='') as file:  
