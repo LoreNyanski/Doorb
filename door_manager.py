@@ -80,7 +80,7 @@ class Door_manager:
     def get_last_incident(self, user_id):
         return self.data[user_id][-1]
     def get_all_last_incident(self, member_ids):
-        return max([self.data[member][-1]
+        return max([self.data[member][-1] if self.data[member] else datetime.datetime.min.replace(tzinfo=datetime.timezone.utc)
                     for member in member_ids])
     def get_all_longest_streak(self, member_ids):
         return pd.Series(self.getall_incidents(member_ids), name='ehe').diff().max()

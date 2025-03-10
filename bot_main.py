@@ -9,6 +9,7 @@ import discord
 import random
 import logging
 import datetime
+import functools
 
 from time import sleep
 from discord.ext import commands
@@ -45,6 +46,7 @@ This patch:
 - things to spend money on
   - clown compressing
   - exchange money for @everyone - DONE (theoretically)
+  - exchange money for increasing @everyone - DONE (theoretically)
 - elden ring message creator
 - !kys
 
@@ -100,12 +102,29 @@ client.active_guild = int(main_guild)
 if TEST_MODE:
     client.active_sticker = int(test_sticker)
     client.active_guild = int(test_guild)
-    
-    
 
 # -----------------------------------------------------------------------------------------
 #                                    Functions
 # -----------------------------------------------------------------------------------------
+
+def guild_restriction(func):
+
+    @functools.wraps(func)
+    async def wrapper(*args, **kwargs):
+
+        ctx = args[0] if args else None
+        guild_id = None
+
+        if isinstance(ctx, commands.Context) or isinstance(ctx, discord.Message):
+            guild_id = ctx.guild.id if ctx.guild else None
+
+        if guild_id != client.active_guild:
+            return
+        
+        return await func(*args, **kwargs)
+        
+    return wrapper
+
 
 
 # Given an int 'chance' returns true with 1/chance probability 
@@ -162,7 +181,7 @@ def format_deltatime(time: datetime.timedelta) -> str:
     return ret
 
 def format_stats(user: discord.User) -> str:
-    if isinstance(user, discord.User):
+    if isinstance(user, discord.User) or isinstance(user, discord.Member):
         raw_stats = dm.stats(user.id, 0, 'self')
     else:
         raw_stats = dm.serverstats([member.id for member in user.members])
@@ -268,6 +287,7 @@ async def on_guild_join(guild):
 #    await get_all_dumbasses(guild)
 
 @client.event
+@guild_restriction
 async def on_message_removed(message):
     # IF IT WAS A STICKER MESSAGE THEN REMOVE THE INCIDENT
     pass
@@ -275,6 +295,7 @@ async def on_message_removed(message):
 
 # Message handler
 @client.event
+@guild_restriction
 async def on_message(message: discord.Message):
     global last_message
 
@@ -361,10 +382,12 @@ Correct guessers: {}'''.format(', '.join([client.get_guild(client.active_guild).
 
 # Test command
 @client.command(name='hi')
+@guild_restriction
 async def hi(ctx):
     await ctx.send('haiii :3')
 
-@client.command()
+@client.command(name='balance')
+@guild_restriction
 async def balance(ctx):
     delta_time = dm.get_delta_daily(ctx.author.id)
     ams_offset = datetime.timedelta(hours=1)
@@ -375,19 +398,20 @@ async def balance(ctx):
         response = f'''
 Daily available :D
 You're balance: {dm.get_money(ctx.author.id)} *({dm.get_money(ctx.author.id) + bt[1]})*
-Current bet: {"None" if bt[0]==0 else client.get_guild(client.active_guild).get_member(bt[0]).name} {bt[1]}
+Current bet: {"None" if bt[0]==0 else client.get_guild(client.active_guild).get_member(bt[0]).name if client.get_guild(client.active_guild).get_member(bt[0]) else "None"} {bt[1]}
 '''
     else:  
         delta_time = today_midnight - now
         response = f'''
 Daily available in {delta_time.seconds//3600} hour(s) {(delta_time.seconds%3600)//60} minute(s).
 You're balance: {dm.get_money(ctx.author.id)} *({dm.get_money(ctx.author.id) + bt[1]})*
-Current bet: {"None" if bt[0]==0 else client.get_guild(client.active_guild).get_member(bt[0]).name} {bt[1]}
+Current bet: {"None" if bt[0]==0 else client.get_guild(client.active_guild).get_member(bt[0]).name if client.get_guild(client.active_guild).get_member(bt[0]) else "None"} {bt[1]}
 '''
     await ctx.send(response)
 
 # Display list of commands
-@client.command()
+@client.command(name='help')
+@guild_restriction
 async def help(ctx):
     response = f'''
 Welcome to doorbot! 
@@ -429,13 +453,17 @@ and more...
 #                                   Door shenanigans
 # -----------------------------------------------------------------------------------------
 
-@client.command()
+@client.command(name='buy')
+@guild_restriction
 async def buy(ctx, *args):
+    global COST_EVERYONE
+
     if len(args) == 0:
         await ctx.send('Invalid arguments lol')
         return
     else:
         arg = args[0]
+        
         match arg:
             case 'everyone':
                 if not money_check(ctx.author, COST_EVERYONE):
@@ -451,7 +479,11 @@ async def buy(ctx, *args):
                 if not len(args) == 2:
                     await ctx.send('Invalid arguments lol')
                     return
-                new_cost = args[1]
+                try:
+                    new_cost = int(args[1])
+                except:
+                    await ctx.send('Invalid arguments lol')
+                    return
                 if not new_cost > COST_EVERYONE:
                     await ctx.send('you are *not* decreasing the price, sorry')
                     return
@@ -465,12 +497,14 @@ async def buy(ctx, *args):
                 await ctx.send('nah')
                 return
 
-@client.command()
+@client.command(name='incidents')
+@guild_restriction
 async def incidents(ctx, *args):
     pass
 
 # List statistics for yourself
-@client.command()
+@client.command(name='stats')
+@guild_restriction
 async def stats(ctx, *args):
     if len(args) == 0:
         response = format_stats(ctx.author)
@@ -514,11 +548,13 @@ async def stats(ctx, *args):
         await ctx.send(response)
         return
     else:   
+        print(arg)
         await ctx.send('thats not a real statistic ._. \n check your own stats for options')
         return
 
 # allows you to place bets on who will be the next to fail an int check
-@client.command()
+@client.command(name='bet')
+@guild_restriction
 async def bet(ctx, *args):
     if len(args) == 0:
         bt = dm.get_bet(ctx.author.id)
@@ -572,6 +608,7 @@ async def bet(ctx, *args):
 # async def blackjack(ctx):
 
 # daily roll between 1 and 1000 - make it look like the google rng - 
+@guild_restriction
 @client.command()
 async def rollies(ctx: discord.ext.commands.Context):
     ams_offset = datetime.timedelta(hours=1)
@@ -630,6 +667,7 @@ That being said enjoy your gamba:
             await ctx.send(f'you owe me a cookie :D')
     return
 
+@guild_restriction
 @client.command
 async def clown(ctx, *args):
     if len(args) > 1:
@@ -642,7 +680,7 @@ async def clown(ctx, *args):
             if compression < 0:
                 await ctx.send("# YOU SHALL NOT *UN*-COMPRESS THE CLOWN")
                 return
-        elif args[0] is "origin":
+        elif args[0] == "origin":
             original = True
             #display original clown           
         else:
@@ -654,7 +692,7 @@ async def clown(ctx, *args):
     else:
         ctx.send("Imagine being too poor to compress clowns.\nWouldn't wanna to be you mate")
 
-# @client.command
+# @client.command()
 # async def woke_trivia(ctx):
 
 # @client.command()
