@@ -16,6 +16,7 @@ from discord.ext import commands
 import discord.ext
 import discord.ext.commands
 from door_manager import Door_manager
+from testing import textGenerate
 from dotenv import load_dotenv
 # from games import
 
@@ -78,6 +79,7 @@ dm = Door_manager()
 
 
 # CONSTANTS
+# I should have done these with dictionaries
 CHANCE_AMOGUS = 15
 CHANCE_DAD = 15
 CHANCE_FUCKING = 15
@@ -94,7 +96,18 @@ last_message = ''
 client.insults = ['Idiot', 'Dumbass', 'Stupid', 'Unintelligent', 'Fool', 'Moron', 'Dummy', 'Daft', 'Unwise', 'Half-baked',
                   'Knobhead', 'Hingedly-impaired', 'Architectually challenged', 'Ill-advised', 'Imbecile', 'Dim', 'Unthinking',
                   'Half-witted', 'Low intelligence specimen']
-client.punishments = ['execution', 'emojify', 'force-luka', 'uwu-ify', 'old_english']
+client.punishments = { 'Uwutalk': "Write in uwutalk. Replace all 'r' and 'l' with 'w', add 'owo', 'uwu', ':3', or 'meow' or similar emoticons occasionally, and make the text sound cute and playful.",
+                'Shakespearean': "Transform the text into Shakespearean-style English, using old-timey words and poetic structures.",
+                # 'Depressed Pirate': "Rewrite the text as if spoken by a pirate currently going through a depressive episode but trying to hide it",
+                'Gen-Z': "Rewrite the text using excessive modern internet slang, memes, and casual phrasing used by younger generations. Include these phrases when it is appropriate: Skibidi, gyatt, mewing, mew, rizz, rizzing, rizzler, on Skibidi, sigma, what the sigma, Ohio, bussin, cook, cooking, let him/her cook, baddie, Skibidi rizz, fanum tax, Fanum taxing, drake, nonchalant dread head, aura, grimace shake, edging, edge, goon, gooning, looks maxing, alpha, griddy, blud, Sus, sussy, imposter, among us, L, mog, mogging, yap, yapping, yapper, cap, Ohio.",
+                'Fratbro': "Rewrite the text as if spoken by a stereotypical frat bro. Use casual, energetic language with excessive confidence. Sprinkle in gym references, party slang, and bro-talk. Prioritize short, punchy sentences with words like 'dude', 'bro' and 'lets goooo'.",
+                # 'Shit yourself': "Rewrite the text as if the speaker is actively in the process of uncontrollably defecating and struggling to communicate. Insert stuttering, abrupt pauses, explicit references to the fact that you are on the verge of shitting yourself and expressions of distress or panic.",
+                'Emojify': "Rewrite the text using only emojis while ensuring the original meaning remains clear. Absolutely no words, letters, or punctuation marks may be used—only emojis and spaces to seperate concepts. Choose the most universally recognizable emojis to represent concepts, avoiding any that might be confusing. The structure should remain logical, and thus you may use multiple emojis to represent one concept",
+                # 'Gangster': "",
+                'Corporate': "Rewrite the text as if it were written in an overly formal, passive-aggressive corporate email. Use business jargon, polite but subtly condescending phrasing such as 'As per my last email', and unnecessarily professional language. The message should sound coldly efficient, yet slightly smug.",
+                'Biblical': "Rewrite the text so that it appears to be a direct passage from the Bible. Use old-fashioned biblical language and structure, such as 'Verily,' 'Thus saith the Lord,' and 'And it came to pass.' Maintain a tone of divine importance and prophetic authority. At the end of each sentence, include a made-up biblical citation, formatted like 'Book 3:16' or 'Epistle of Mark 12:4' to enhance authenticity.",
+                }
+
 
 client.active_sticker = int(tracked_sticker)
 client.active_guild = int(main_guild)
@@ -213,6 +226,16 @@ def compress_clown(user, amount):
     dm.add_compr(user.id, amount)
     #apply compression
 
+async def process_punishments(message: discord.Message) -> bool:
+    punishm = dm.get_punishment(message.author)
+    if punishm:
+        (p_type, start, length) = punishm
+        if (start + length < datetime.datetime.now(datetime.timezone.utc)):
+            message.edit(content=textGenerate(personality=client.punishments[p_type], message=message.content))
+            return True
+    else:
+        return False
+
 
 # -----------------------------------------------------------------------------------------
 #                                    Predicates
@@ -289,9 +312,12 @@ async def on_guild_join(guild):
 @client.event
 @guild_restriction
 async def on_message_removed(message):
-    # IF IT WAS A STICKER MESSAGE THEN REMOVE THE INCIDENT
+    # TODO IF IT WAS A STICKER MESSAGE THEN REMOVE THE INCIDENT
     pass
 
+@client.event
+async def on_command(ctx):
+    print('lmao')
 
 # Message handler
 @client.event
@@ -306,12 +332,14 @@ async def on_message(message: discord.Message):
 
     # Do commands if applicable
     await client.process_commands(message)
+    if await process_punishments(message): return
 
     # Test feature
     if message.content == 'door':
         await message.channel.send("look at this dumbass XD")
 
     # Amogus detector
+    # TODO: make it detect even more amogus
     if amogus_check(message):
         msg = message.content.replace('||','')
         response = '||'

@@ -26,6 +26,7 @@ class Door_manager:
         self.bets = Bet(self.userdata[['bet_user_id', 'bet_amount']])
     
         self.shop = {}
+        self.punishments = {}
 
     # save datas
     def save_data(self):
@@ -84,12 +85,15 @@ class Door_manager:
                     for member in member_ids])
     def get_all_longest_streak(self, member_ids):
         return pd.Series(self.getall_incidents(member_ids), name='ehe').diff().max()
+    def get_punishment(self, user_id):
+        return self.punishments[user_id] if (user_id in self.punishments.keys()) else None
 
     # Change money of user
     def add_money(self, user_id, amount):
         self.userdata.loc[user_id, 'money'] += amount
 
-
+    def add_punishment(self, user_id:int, punishment_type:str, start:datetime.datetime, length: int):
+        self.punishments[user_id] = (punishment_type, start, length)
 
     # Add new instance of dumbassery 
     @op_data
