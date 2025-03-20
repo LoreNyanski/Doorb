@@ -43,7 +43,7 @@ This patch:
 - some kind of yo mama
 
 - stealing from people (punishment incl.)
-  - if possible, lot of punishments
+  - if possible, lot of punishments - DONE (frameworks) - TODO: make faster
 - things to spend money on
   - clown compressing
   - exchange money for @everyone - DONE (theoretically)
@@ -98,7 +98,8 @@ last_message = ''
 client.insults = ['Idiot', 'Dumbass', 'Stupid', 'Unintelligent', 'Fool', 'Moron', 'Dummy', 'Daft', 'Unwise', 'Half-baked',
                   'Knobhead', 'Hingedly-impaired', 'Architectually challenged', 'Ill-advised', 'Imbecile', 'Dim', 'Unthinking',
                   'Half-witted', 'Low intelligence specimen']
-client.punishments = { 'Uwutalk': "Write in uwutalk. Replace all 'r' and 'l' with 'w', add 'owo', 'uwu', ':3', or 'meow' or similar emoticons occasionally, and make the text sound cute and playful.",
+client.punishments = {
+                'Uwutalk': "Write in uwutalk. Replace all 'r' and 'l' with 'w', add 'owo', 'uwu', ':3', or 'meow' or similar emoticons occasionally, and make the text sound cute and playful.",
                 'Shakespearean': "Transform the text into Shakespearean-style English, using old-timey words and poetic structures.",
                 # 'Depressed Pirate': "Rewrite the text as if spoken by a pirate currently going through a depressive episode but trying to hide it",
                 'Gen-Z': "Rewrite the text using excessive modern internet slang, memes, and casual phrasing used by younger generations. Include these phrases when it is appropriate: Skibidi, gyatt, mewing, mew, rizz, rizzing, rizzler, on Skibidi, sigma, what the sigma, Ohio, bussin, cook, cooking, let him/her cook, baddie, Skibidi rizz, fanum tax, Fanum taxing, drake, nonchalant dread head, aura, grimace shake, edging, edge, goon, gooning, looks maxing, alpha, griddy, blud, Sus, sussy, imposter, among us, L, mog, mogging, yap, yapping, yapper, cap, Ohio.",
@@ -232,20 +233,24 @@ async def process_punishments(message: discord.Message) -> bool:
     punishm = dm.get_punishment(message.author.id)
     if punishm:
         (p_type, start, length) = punishm
-        if (start + length > datetime.datetime.now(datetime.timezone.utc)):
-            newmsg = textGenerate(personality=client.punishments[p_type], message=message.content)
 
+        if (start + length > datetime.datetime.now(datetime.timezone.utc)):
             #had some help from GPT here, sorry, im in a time crunch :(
+
             try:
-                await message.delete()
-                webhook = await get_webhook(message.channel)
-            
-                # Send the modified message using the webhook
-                await webhook.send(
-                    content=newmsg,
-                    username=message.author.display_name,
-                    avatar_url=message.author.avatar.url if message.author.avatar else message.author.default_avatar.url
-                )
+
+                if not message.content == '':
+                    await message.delete()
+                    newmsg = textGenerate(personality=client.punishments[p_type], message=message.content)
+
+                    webhook = await get_webhook(message.channel)
+
+                    await webhook.send(
+                        content=newmsg,
+                        username=message.author.display_name,
+                        avatar_url=message.author.avatar.url if message.author.avatar else message.author.default_avatar.url
+                    )
+        
             except Exception as e:
                 print(f"Error: {e}")
             
@@ -340,8 +345,9 @@ async def on_guild_join(guild):
 @client.event
 @guild_restriction
 async def on_message_removed(message):
+    if door_check(message):
     # TODO IF IT WAS A STICKER MESSAGE THEN REMOVE THE INCIDENT
-    pass
+        pass
 
 @client.event
 async def on_command(ctx):
@@ -360,8 +366,10 @@ async def on_message(message: discord.Message):
         return
 
     # Do commands if applicable
+    if not message.content.startswith('!'):
+        if await process_punishments(message): return
+    
     await client.process_commands(message)
-    if await process_punishments(message): return
 
     # Test feature
     if message.content == 'door':
@@ -443,8 +451,9 @@ Correct guessers: {}'''.format(', '.join([client.get_guild(client.active_guild).
 async def hi(ctx:discord.ext.commands.Context):
     await ctx.send('haiii :3')
     p_type = random.choice(list(client.punishments.keys()))
-    dm.add_punishment(ctx.author.id, p_type, ctx.message.created_at, datetime.timedelta(days=1))
-    await ctx.send(f'punishment {p_type} succesfully added for 1 hour')
+    p_time = datetime.timedelta(minutes=1)
+    dm.add_punishment(ctx.author.id, p_type, ctx.message.created_at, p_time)
+    await ctx.send(f'punishment {p_type} succesfully added for {p_time}')
     
 
 @client.command(name='balance')
