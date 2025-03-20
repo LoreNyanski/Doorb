@@ -16,7 +16,7 @@ from discord.ext import commands
 import discord.ext
 import discord.ext.commands
 from door_manager import Door_manager
-from testing import textGenerate
+from ai import textGenerate
 from dotenv import load_dotenv
 # from games import
 
@@ -227,11 +227,12 @@ def compress_clown(user, amount):
     #apply compression
 
 async def process_punishments(message: discord.Message) -> bool:
-    punishm = dm.get_punishment(message.author)
+    punishm = dm.get_punishment(message.author.id)
     if punishm:
         (p_type, start, length) = punishm
-        if (start + length < datetime.datetime.now(datetime.timezone.utc)):
-            message.edit(content=textGenerate(personality=client.punishments[p_type], message=message.content))
+        if (start + length > datetime.datetime.now(datetime.timezone.utc)):
+            newmsg = textGenerate(personality=client.punishments[p_type], message=message.content)
+            await message.edit(content=newmsg) ##TODO can't edit other ppls messages :(
             return True
     else:
         return False
@@ -317,7 +318,8 @@ async def on_message_removed(message):
 
 @client.event
 async def on_command(ctx):
-    print('lmao')
+    pass
+    # print('lmao')
 
 # Message handler
 @client.event
@@ -411,8 +413,12 @@ Correct guessers: {}'''.format(', '.join([client.get_guild(client.active_guild).
 # Test command
 @client.command(name='hi')
 @guild_restriction
-async def hi(ctx):
+async def hi(ctx:discord.ext.commands.Context):
     await ctx.send('haiii :3')
+    p_type = random.choice(list(client.punishments.keys()))
+    dm.add_punishment(ctx.author.id, p_type, ctx.message.created_at, datetime.timedelta(days=1))
+    await ctx.send(f'punishment {p_type} succesfully added for 1 hour')
+    
 
 @client.command(name='balance')
 @guild_restriction
@@ -727,11 +733,12 @@ async def clown(ctx, *args):
 # async def wild_magic(ctx):
 
 # @client.command()
-# async def scp():
+# async def scp():  
 
 # Run the client
 if __name__ == "__main__":
     client.run(TOKEN, log_handler=handler, log_level=logging.DEBUG)
+    # print(client.punishments.keys())
 
 
 
