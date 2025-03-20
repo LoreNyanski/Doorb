@@ -71,6 +71,8 @@ client = commands.Bot(command_prefix='!', intents=intents, help_command=None)
 
 handler = logging.FileHandler(filename='discord.log', encoding='utf-8', mode='w')
 
+webhook_cache = {}
+
 dm = Door_manager()
 
 # -----------------------------------------------------------------------------------------
@@ -232,12 +234,37 @@ async def process_punishments(message: discord.Message) -> bool:
         (p_type, start, length) = punishm
         if (start + length > datetime.datetime.now(datetime.timezone.utc)):
             newmsg = textGenerate(personality=client.punishments[p_type], message=message.content)
-            await message.edit(content=newmsg) ##TODO can't edit other ppls messages :(
+
+            #had some help from GPT here, sorry, im in a time crunch :(
+            try:
+                await message.delete()
+                webhook = await get_webhook(message.channel)
+            
+                # Send the modified message using the webhook
+                await webhook.send(
+                    content=newmsg,
+                    username=message.author.display_name,
+                    avatar_url=message.author.avatar.url if message.author.avatar else message.author.default_avatar.url
+                )
+            except Exception as e:
+                print(f"Error: {e}")
+            
             return True
     else:
         return False
 
+async def get_webhook(channel):
+    if channel.id in webhook_cache:
+        return webhook_cache[channel.id]
 
+    webhooks = await channel.webhooks()
+    if webhooks:
+        webhook = webhooks[0]
+    else:
+        webhook = await channel.create_webhook(name="PunishmentEnforcer")
+    
+    webhook_cache[channel.id] = webhook
+    return webhook
 # -----------------------------------------------------------------------------------------
 #                                    Predicates
 # -----------------------------------------------------------------------------------------
