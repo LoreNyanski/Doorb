@@ -101,6 +101,8 @@ COST_EVERYONE = 1000 # ignore the fact that this isn't a constant
 COOLDOWN_KYS = datetime.timedelta(hours=4)
 COOLDOWN_EVERYONE = datetime.timedelta(hours=24)
 
+TIME_GUARDS = datetime.timedelta(minutes=15)
+
 AMS_OFFSET = datetime.timedelta(hours=2) # fucking daylight savings
 # I KNOW THERES A BETTER WAY TO DO THIS IM JUST TOO LAZY
 
@@ -278,11 +280,11 @@ async def process_punishments(message: discord.Message) -> bool:
     else:
         return False
 
-async def punish(user, channel, reason):
+async def punish(user_id, channel, reason):
     p_type = random.choice(list(client.punishments.keys()))
-    dm.add_punishment(user.id, p_type, datetime.datetime.now(tz=datetime.timezone.utc), PUNISMENT_LENGTH)
+    dm.add_punishment(user_id, p_type, datetime.datetime.now(tz=datetime.timezone.utc), PUNISMENT_LENGTH)
     await channel.send(f'''
-User <@{user.id}>, you have been deemed unworthy of free speech for the following reason:
+User <@{user_id}>, you have been deemed unworthy of free speech for the following reason:
 {reason}
 
 You are only allowed to speak in {p_type} for approximately {PUNISMENT_LENGTH.seconds//3600} hours
@@ -759,7 +761,7 @@ That being said enjoy your gamba:
     await ctx.send(response)
     match result:
         case 1:
-            await punish(ctx.author, ctx.channel, reason='ha ha')
+            await punish(ctx.author.id, ctx.channel, reason='ha ha')
         case 15:
             pass
         case 69:
@@ -787,7 +789,27 @@ async def steal(ctx: commands.Context, *args):
 @client.command(name='guards')
 @guild_restriction
 async def guards(ctx: commands.Context, *args):
-    pass
+    steals = dm.get_all_steals(ctx.author.id)
+    happens = False
+    recovered = 0
+    if not steals == None:
+        for perp_id in steals.keys():
+            time, amount = steals[perp_id]
+            now = datetime.datetime.now(datetime.timezone.utc)
+            if time + TIME_GUARDS > now:
+                if not happens:
+                    await ctx.send("STOP! You violated the law >:(")
+                await punish(perp_id, ctx.channel, reason="Zwieber, niet stelen!")
+                recovered += amount // 2
+                dm.add_money(ctx.author.id, amount//2)
+                dm.add_money(perp_id, -1*amount//2)
+                happens = True
+        dm.clear_steals(ctx.author.id)
+    if not happens:
+        await ctx.send('We couldnt find anything sire...')
+    else:
+        await ctx.send(f'Recovered: {recovered}')
+
 
 @client.command(name='charity')
 @guild_restriction
@@ -828,14 +850,14 @@ async def kys(ctx: commands.Context, *args):
     if not redeemable:
         now = datetime.datetime.now(datetime.timezone.utc)
         delta_time = (tim + COOLDOWN_KYS) - now
-        await ctx.send(f'"Dont be a sour loser lmao"\n- Confusionus or smth (cd: {delta_time.seconds//3600} hour(s) {(delta_time.seconds%3600)//60} minute(s))')
+        await ctx.send(f'"Dont be a sour loser lmao"\n- Confusionus or smth\n*(cooldown: {delta_time.seconds//3600} hour(s) {(delta_time.seconds%3600)//60} minute(s))*')
         return
     if not ctx.message.mentions:
         await ctx.send("Tag someone, idiot")
         return
     mention = ctx.message.mentions[0]
     victim = random.choice([mention, ctx.author])
-    await punish(victim, ctx.channel, reason="krill yourshelf")
+    await punish(victim.id, ctx.channel, reason="krill yourshelf")
     dm.shop[(victim.id,'kys')] = datetime.datetime.now(datetime.timezone.utc)
 
 # @guild_restriction

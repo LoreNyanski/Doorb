@@ -6,7 +6,7 @@ import bisect
 from collections import defaultdict
 
 
-default_values_userdata = {'money':500,'last_daily':datetime.datetime.now(datetime.timezone.utc)-datetime.timedelta(days=1),'bet_user_id':0,'bet_amount':0}
+default_values_userdata = {'money':500,'last_daily':datetime.datetime.now(datetime.timezone.utc)-datetime.timedelta(days=1),'bet_user_id':0,'bet_amount':0, 'dex':0, 'stealth':0}
 ams_offset = datetime.timedelta(hours=1)
 pd.options.mode.chained_assignment = None # I don't care pandas
 
@@ -27,6 +27,7 @@ class Door_manager:
     
         self.shop = {}
         self.punishments = {}
+        self.steals = defaultdict(dict) # steals[victim][perp]
 
     # save datas
     def save_data(self):
@@ -87,6 +88,12 @@ class Door_manager:
         return pd.Series(self.getall_incidents(member_ids), name='ehe').diff().max()
     def get_punishment(self, user_id):
         return self.punishments[user_id] if (user_id in self.punishments.keys()) else None
+    def get_all_steals(self, user_id):
+        return self.steals[user_id] if (user_id in self.steals.keys()) else None
+    
+
+    def clear_steals(self, user_id):
+        self.steals[user_id].clear()
 
     # Change money of user
     def add_money(self, user_id, amount):
