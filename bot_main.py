@@ -49,7 +49,9 @@ This patch:
   - exchange money for @everyone - DONE (theoretically)
   - exchange money for increasing @everyone - DONE (theoretically)
 - elden ring message creator
-- !kys
+- !kys - DONE (theoretically)
+
+TODO: TEST EVERY FEATURE
 
 '''
 
@@ -92,6 +94,7 @@ CHANCE_SALUTE = 2
 REQUIREMENT_HIVEMIND = 3
 
 COST_EVERYONE = 1000
+PUNISMENT_LENGTH = 4
 
 # Globals
 last_message = ''
@@ -232,6 +235,9 @@ def compress_clown(user, amount):
 async def process_punishments(message: discord.Message) -> bool:
     punishm = dm.get_punishment(message.author.id)
     if punishm:
+        
+
+
         (p_type, start, length) = punishm
 
         if (start + length > datetime.datetime.now(datetime.timezone.utc)):
@@ -241,14 +247,20 @@ async def process_punishments(message: discord.Message) -> bool:
 
                 if not message.content == '':
                     await message.delete()
+
+                    msgattachments = message.attachments
+                    msgreference = message.reference
+
                     newmsg = textGenerate(personality=client.punishments[p_type], message=message.content)
+                    cont = (f'> <@{msgreference.resolved.author.id}>: ' + msgreference.jump_url + '\n' + newmsg) if (msgreference and msgreference.resolved and isinstance(msgreference.resolved, discord.Message)) else newmsg
 
                     webhook = await get_webhook(message.channel)
 
                     await webhook.send(
-                        content=newmsg,
+                        content=cont,
                         username=message.author.display_name,
-                        avatar_url=message.author.avatar.url if message.author.avatar else message.author.default_avatar.url
+                        avatar_url=message.author.avatar.url if message.author.avatar else message.author.default_avatar.url,
+                        files=msgattachments
                     )
         
             except Exception as e:
@@ -258,7 +270,17 @@ async def process_punishments(message: discord.Message) -> bool:
     else:
         return False
 
-async def get_webhook(channel):
+async def punish(user, channel, reason):
+    p_type = random.choice(list(client.punishments.keys()))
+    dm.add_punishment(user.id, p_type, datetime.datetime.now(tz=datetime.timezone.utc), PUNISMENT_LENGTH)
+    channel.send(f'''
+User @<{user.id}>, you have been deemed unworthy of free speech for the following reason:
+{reason}
+
+You are only allowed to speak in {p_type} for approximately {PUNISMENT_LENGTH} hours
+''')
+
+async def get_webhook(channel) -> discord.Webhook:
     if channel.id in webhook_cache:
         return webhook_cache[channel.id]
 
@@ -717,13 +739,13 @@ That being said enjoy your gamba:
     await ctx.send(response)
     match result:
         case 1:
-            pass # TODO
+            punish(ctx.author, ctx.channel, reason='ha ha')
         case 15:
             pass
         case 69:
             await ctx.send('nice')
         case 420:
-            pass
+            await ctx.send('nice')
         case 1000:
             sleep(1.8)
             await ctx.send('HOLY SHIIIT')
@@ -739,28 +761,42 @@ That being said enjoy your gamba:
 
 @guild_restriction
 @client.command
-async def clown(ctx, *args):
-    if len(args) > 1:
+async def kys(ctx: commands.Context, *args):
+    # TODO: give a 1 hr cooldown on this
+    if not len(args) == 1:
         await ctx.send("Invalid arguments lol")
         return
-    compression = 0
-    if len(args) == 1:
-        if type(args[0]) == int:
-            compression = args[0]
-            if compression < 0:
-                await ctx.send("# YOU SHALL NOT *UN*-COMPRESS THE CLOWN")
-                return
-        elif args[0] == "origin":
-            original = True
-            #display original clown           
-        else:
-            await ctx.send("Invalid arguments lol")
-            return
-    if money_check(author_id, compression):
-        dm.add_money(author_id, compression*-1)
-        compress_clown()
-    else:
-        ctx.send("Imagine being too poor to compress clowns.\nWouldn't wanna to be you mate")
+    mention = args[0]
+    if not isinstance(mention, (discord.User, discord.Member)):
+        await ctx.send("Tag someone, idiot")
+        return
+    victim = random.choice(mention, ctx.author)
+    punish(victim, ctx.channel, reason="krill yourshelf")
+
+# @guild_restriction
+# @client.command
+# async def clown(ctx, *args):
+    # if len(args) > 1:
+        # await ctx.send("Invalid arguments lol")
+        # return
+    # compression = 0
+    # if len(args) == 1:
+        # if type(args[0]) == int:
+            # compression = args[0]
+            # if compression < 0:
+                # await ctx.send("# YOU SHALL NOT *UN*-COMPRESS THE CLOWN")
+                # return
+        # elif args[0] == "origin":
+            # original = True
+            ## display original clown           
+        # else:
+            # await ctx.send("Invalid arguments lol")
+            # return
+    # if money_check(author_id, compression):
+        # dm.add_money(author_id, compression*-1)
+        # compress_clown()
+    # else:
+        # ctx.send("Imagine being too poor to compress clowns.\nWouldn't wanna to be you mate")
 
 # @client.command()
 # async def woke_trivia(ctx):
