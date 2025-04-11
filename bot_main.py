@@ -43,6 +43,7 @@ This patch:
 - serverstats check the COLLECTIVE streaks and incidents (serverstats mean gives a leaderboard) - DONE (theoretically)
 - o7 reactor - DONE (theoretically)
 - sticker display what streak you just broke - DONE (theoretically)
+- deleting message deletes your incident aswell
 
 - stealing from people (punishment incl.)
   - if possible, lot of punishments - DONE (frameworks) - TODO: make faster
@@ -93,12 +94,12 @@ CHANCE_DUMBASS = 1
 CHANCE_SALUTE = 2
 
 REQUIREMENT_HIVEMIND = 3
-PUNISMENT_LENGTH = 4
+PUNISMENT_LENGTH = datetime.timedelta(hours=4)
 
 COST_EVERYONE = 1000 # ignore the fact that this isn't a constant
 
-COOLDOWN_KYS = 4
-COOLDOWN_EVERYONE = 24
+COOLDOWN_KYS = datetime.timedelta(hours=4)
+COOLDOWN_EVERYONE = datetime.timedelta(hours=24)
 
 AMS_OFFSET = datetime.timedelta(hours=2) # fucking daylight savings
 # I KNOW THERES A BETTER WAY TO DO THIS IM JUST TOO LAZY
@@ -257,7 +258,6 @@ async def process_punishments(message: discord.Message) -> bool:
                 if not message.content == '':
                     await message.delete()
 
-                    msgattachments = message.attachments
                     msgreference = message.reference
 
                     newmsg = textGenerate(personality=client.punishments[p_type], message=message.content)
@@ -269,7 +269,6 @@ async def process_punishments(message: discord.Message) -> bool:
                         content=cont,
                         username=message.author.display_name,
                         avatar_url=message.author.avatar.url if message.author.avatar else message.author.default_avatar.url,
-                        files=msgattachments
                     )
         
             except Exception as e:
@@ -282,11 +281,11 @@ async def process_punishments(message: discord.Message) -> bool:
 async def punish(user, channel, reason):
     p_type = random.choice(list(client.punishments.keys()))
     dm.add_punishment(user.id, p_type, datetime.datetime.now(tz=datetime.timezone.utc), PUNISMENT_LENGTH)
-    channel.send(f'''
-User @<{user.id}>, you have been deemed unworthy of free speech for the following reason:
+    await channel.send(f'''
+User <@{user.id}>, you have been deemed unworthy of free speech for the following reason:
 {reason}
 
-You are only allowed to speak in {p_type} for approximately {PUNISMENT_LENGTH} hours
+You are only allowed to speak in {p_type} for approximately {PUNISMENT_LENGTH.seconds//3600} hours
 ''')
 
 async def get_webhook(channel) -> discord.Webhook:
@@ -323,7 +322,7 @@ def fucking_check(message) -> bool:
     return re.search(r"\S+ fucking? \S+", message.content, re.IGNORECASE) and rndm(CHANCE_FUCKING)
 
 def salute_check(message) -> bool:
-    return re.search(r"general|major|lieutenant|captain|colonel \S+", message.content, re.IGNORECASE) and rndm(CHANCE_SALUTE)
+    return re.search(r"(general|major|lieutenant|captain|colonel) \S+", message.content, re.IGNORECASE) and rndm(CHANCE_SALUTE)
 
 def door_check(message) -> bool:
     if message.stickers:
@@ -334,14 +333,13 @@ def money_check(user, amount) -> bool:
     return dm.get_money(user.id) >= amount
 
 def can_redeem(user, item, cooldown):
-    cd = datetime.timedelta(hours=cooldown)
     time: datetime.datetime = datetime.datetime.now(tz=datetime.timezone.utc)
     key = (user.id, item)
     if key not in dm.shop:
         return (True, 0)
     else:
         last_time: datetime.datetime = dm.shop[key]
-        boolean = (time - last_time) >= cd ## TODO this might be fucked
+        boolean = (time - last_time) >= cooldown ## TODO this might be fucked
         return (boolean, last_time)
 # -----------------------------------------------------------------------------------------
 #                                    Events
@@ -564,9 +562,10 @@ async def buy(ctx, *args):
 Things (to buy) ((the cost is in {{}})):
 - everyone {{{COST_EVERYONE}}} - ping everyone. This will *surely* not get annoying very fast
 - increase_everyone [new cost] {{new cost}} - increase the cost of pinging eveyrone cuz honestly fuck that. NB: YOU *WILL* HAVE TO PAY AS MUCH AS THE COST YOU'RE TRYING TO SET IT TO
-- dex {{{dex_cost}}} - +1 to succeeding a steal (current: +{dex_current})
-- purse {{{purse_cost}}} - +1% money stolen (current: +{purse_current}%)
-                       ''')
+''')
+#- dex {{{dex_cost}}} - +1 to succeeding a steal (current: +{dex_current})
+#- purse {{{purse_cost}}} - +1% money stolen (current: +{purse_current}%)
+#                       ''')
         return
     else:
         arg = args[0].lower() if isinstance(args[0], str) else args[0]
@@ -722,8 +721,8 @@ async def bet(ctx, *args):
 # async def blackjack(ctx):
 
 # daily roll between 1 and 1000 - make it look like the google rng - 
+@client.command(name='rollies')
 @guild_restriction
-@client.command()
 async def rollies(ctx: discord.ext.commands.Context):
     today_midnight = (datetime.datetime.now(datetime.timezone.utc)+AMS_OFFSET).replace(hour=0,minute=0,second=0,microsecond=0)
     lastd = dm.get_last_daily(ctx.author.id)+AMS_OFFSET
@@ -760,7 +759,7 @@ That being said enjoy your gamba:
     await ctx.send(response)
     match result:
         case 1:
-            punish(ctx.author, ctx.channel, reason='ha ha')
+            await punish(ctx.author, ctx.channel, reason='ha ha')
         case 15:
             pass
         case 69:
@@ -780,23 +779,50 @@ That being said enjoy your gamba:
             await ctx.send(f'you owe me a cookie :D')
     return
 
+@client.command(name='steal')
 @guild_restriction
-@client.command
 async def steal(ctx: commands.Context, *args):
     pass
 
+@client.command(name='guards')
 @guild_restriction
-@client.command
 async def guards(ctx: commands.Context, *args):
     pass
 
+@client.command(name='charity')
 @guild_restriction
-@client.command
 async def charity(ctx: commands.Context, *args):
-    pass
+    if len(args) == 2:
+        try:
+            if ctx.message.raw_mentions:
+                user_id = ctx.message.raw_mentions[0]
+            else:
+                user = ctx.guild.get_member_named(str(args[0]))
+                if user == None:
+                    await ctx.send('No user with that name')
+                    return 
+                user_id = user.id
+            charity_amount = int(args[1])
+        except:
+            await ctx.send('Invalid arguments lol')
+            return
+        if charity_amount < 0:
+            await ctx.send('not today satan')
+            return
+        if dm.get_money(ctx.author.id) + dm.get_bet(ctx.author.id)[1] < charity_amount:
+            await ctx.send(f'cant give what you dont have :pensive:\n(Your balance is: {dm.get_money(ctx.author.id)})')
+            return
+        dm.add_money(ctx.author.id, -1*charity_amount)
+        dm.add_money(user_id, charity_amount)
+        await ctx.send(f'Money transfered\n(New balance: {dm.get_money(ctx.author.id)})')
+        return
+    
+    else:
+        await ctx.send('Invalid arguments lol')
+        return
 
+@client.command(name='kys')
 @guild_restriction
-@client.command
 async def kys(ctx: commands.Context, *args):
     redeemable, tim = can_redeem(ctx.author, 'kys', COOLDOWN_KYS)
     if not redeemable:
@@ -804,15 +830,12 @@ async def kys(ctx: commands.Context, *args):
         delta_time = (tim + COOLDOWN_KYS) - now
         await ctx.send(f'"Dont be a sour loser lmao"\n- Confusionus or smth (cd: {delta_time.seconds//3600} hour(s) {(delta_time.seconds%3600)//60} minute(s))')
         return
-    if not len(args) == 1:
-        await ctx.send("Invalid arguments lol")
-        return
-    mention = args[0]
-    if not isinstance(mention, (discord.User, discord.Member)):
+    if not ctx.message.mentions:
         await ctx.send("Tag someone, idiot")
         return
-    victim = random.choice(mention, ctx.author)
-    punish(victim, ctx.channel, reason="krill yourshelf")
+    mention = ctx.message.mentions[0]
+    victim = random.choice([mention, ctx.author])
+    await punish(victim, ctx.channel, reason="krill yourshelf")
     dm.shop[(victim.id,'kys')] = datetime.datetime.now(datetime.timezone.utc)
 
 # @guild_restriction
