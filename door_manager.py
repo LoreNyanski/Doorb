@@ -75,6 +75,9 @@ class Door_manager:
     def get_last_daily(self, user_id):
         self.user_pre(user_id)
         return self.userdata.loc[user_id, 'last_daily']
+    def get_steal_stats(self, user_id):
+        self.user_pre(user_id)
+        return (self.userdata.loc[user_id, 'dex'], self.userdata.loc[user_id, 'pouch'])
     def get_delta_daily(self, user_id):
         # return datetime.datetime.now(datetime.timezone.utc) - self.get_last_daily(user_id)
         today_midnight = (datetime.datetime.now(datetime.timezone.utc)+ams_offset).replace(hour=0,minute=0,second=0,microsecond=0)
@@ -94,13 +97,23 @@ class Door_manager:
 
     def clear_steals(self, user_id):
         self.steals[user_id].clear()
-
-    # Change money of user
-    def add_money(self, user_id, amount):
-        self.userdata.loc[user_id, 'money'] += amount
-
     def add_punishment(self, user_id:int, punishment_type:str, start:datetime.datetime, length: int):
         self.punishments[user_id] = (punishment_type, start, length)
+
+    # Change money of user
+    @op_userdata
+    def add_money(self, user_id, amount):
+        self.userdata.loc[user_id, 'money'] += amount
+    @op_userdata
+    def increase_dex(self, user_id):
+        self.userdata.loc[user_id, 'dex'] += 1
+    @op_userdata
+    def increase_pouch(self, user_id):
+        self.userdata.loc[user_id, 'pouch'] += 1
+
+
+
+
 
     # Add new instance of dumbassery 
     @op_data
@@ -111,16 +124,15 @@ class Door_manager:
     # Add money from daily
     @op_userdata
     def daily(self, user_id, amount, date: datetime.datetime):
-        self.add_money(user_id, amount)
+        self.userdata.loc[user_id, 'money'] += amount
         self.userdata.loc[user_id, 'last_daily'] = date
 
     # Register bet in userdata
     @op_userdata
     def place_bet(self, user_id, bet_user_id: int, bet_amount):
-        self.add_money(user_id, self.userdata.loc[user_id, 'bet_amount'])
+        self.userdata.loc[user_id, 'money'] +=  self.userdata.loc[user_id, 'bet_amount'] - bet_amount
         self.userdata.loc[user_id, 'bet_user_id'] = bet_user_id
         self.userdata.loc[user_id, 'bet_amount'] = bet_amount
-        self.add_money(user_id, -1*bet_amount)
         # self.bets.add_bet(self.userdata.loc[user_id])
         self.bets = Bet(self.userdata[['bet_user_id', 'bet_amount']])
 

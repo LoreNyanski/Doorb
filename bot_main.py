@@ -556,26 +556,36 @@ and more...
 
 @client.command(name='buy')
 @guild_restriction
-async def buy(ctx, *args):
+async def buy(ctx: commands.Context, *args):
     global COST_EVERYONE
+    dex_current, pouch_current = dm.get_steal_stats(ctx.author.id)
+    dex_cost = 3000*dex_current
+    pouch_cost = 5000*pouch_current
     if len(args) == 0:
         # get relevant stats from dm
         await ctx.send(f'''
 Things (to buy) ((the cost is in {{}})):
 - everyone {{{COST_EVERYONE}}} - ping everyone. This will *surely* not get annoying very fast
 - increase_everyone [new cost] {{new cost}} - increase the cost of pinging eveyrone cuz honestly fuck that. NB: YOU *WILL* HAVE TO PAY AS MUCH AS THE COST YOU'RE TRYING TO SET IT TO
-''')
-#- dex {{{dex_cost}}} - +1 to succeeding a steal (current: +{dex_current})
-#- purse {{{purse_cost}}} - +1% money stolen (current: +{purse_current}%)
-#                       ''')
+- dex {{{dex_cost}}} - +1 to succeeding a steal (current: +{dex_current})
+- pouch {{{pouch_cost}}} - +1% money stolen (current: +{pouch_current}%)
+                       ''')
         return
     else:
         arg = args[0].lower() if isinstance(args[0], str) else args[0]
         match arg:
             case 'dex':
-                pass
-            case 'purse':
-                pass
+                if not money_check(ctx.author, dex_cost):
+                    await ctx.send('cashless behaviour')
+                    return
+                dm.add_money(ctx.author.id, -1*dex_cost)
+                dm.increase_dex(ctx.author.id)
+            case 'pouch':
+                if not money_check(ctx.author, pouch_cost):
+                    await ctx.send('cashless behaviour')
+                    return
+                dm.add_money(ctx.author.id, -1*pouch_cost)
+                dm.increase_dex(ctx.author.id)
             case 'everyone':
                 if not money_check(ctx.author, COST_EVERYONE):
                     await ctx.send('cashless behaviour')
@@ -784,7 +794,8 @@ That being said enjoy your gamba:
 @client.command(name='steal')
 @guild_restriction
 async def steal(ctx: commands.Context, *args):
-    pass
+    dex, pouch = dm.get_steal_stats(ctx.author.id)
+    
 
 @client.command(name='guards')
 @guild_restriction
