@@ -35,6 +35,8 @@ TODO LIST
 - some kind of yo mama
 - elden ring message creator
 - clown compressing
+- !woke - youll see (eventually frfr)
+- deleting incidents deleting instances in the database aswell
 '''
 
 '''
@@ -524,27 +526,21 @@ I am here to tell you who's the biggest dumbass on your discord server.
 List of commands:
 - !help - youre reading it rn idiot
 - !stats [optional: @user | server | mean, median, max, min, count, last, money] - displays your/someone else's stats | the server's collective stats | the leaderboard in provided statistic on the server
-- !bet [optional:user amount] - place a bet on who will be the next dumbass. If none provided displays the current bets
+- !bet [optional: (@)user amount] - place a bet on who will be the next dumbass. If none provided displays the current bets
 - !balance - how poor you are, who you bet on
 - !rollies - gamba
-- !steal [amount] - lets you take money from others.
+- !steal [user] - lets you take money from others.
 - !guards - GUAAAAAAARDS!! punish people who tried to steal from you in the past 15 mins
-- 
+- !charity [(@)user amount] - be a benevolent god
 - !buy [optional: thing] - lets you buy things with your money. Otherwise displays available purchases.
-- !kys [@user] - settle arguments with style, a 50/50 with a twist
-
-Coming soon™:
-- !incidents - a list of timestamps to all of your door check fails
-- !woke - youll see
-- deleting incidents deleting instances in the database aswell
-- more interpretable statistics (lets be honest the current one is crap)
-- doorbot messages using embeds instead of textbox
+- !kys [@user] - settle arguments with style, a 50/50 with a twist. It also works if you just reply to someone
 
 Patch notes:
 - !stats has a money leaderboard
 - !stats has a server option to check the collective idiocy
 - incidents now let you know the collective streak you just broke (for extra shame value)
-- capitalism! stealing! censorship!
+- !kys added. Try it out :D
+- capitalism! stealing! censorship! 
 and more...
     '''
     
@@ -791,10 +787,14 @@ That being said enjoy your gamba:
             await ctx.send(f'you owe me a cookie :D')
     return
 
+
+
 @client.command(name='steal')
 @guild_restriction
 async def steal(ctx: commands.Context, *args):
     dex, pouch = dm.get_steal_stats(ctx.author.id)
+    
+
     
 
 @client.command(name='guards')
