@@ -30,6 +30,11 @@ TODO LIST
 - David scale of things
 - add custom names
 - catlike typing detect
+- serverstats display how much everyone contributed
+- catlike typing detected
+- some kind of yo mama
+- elden ring message creator
+- clown compressing
 '''
 
 '''
@@ -38,17 +43,13 @@ This patch:
 - serverstats check the COLLECTIVE streaks and incidents (serverstats mean gives a leaderboard) - DONE (theoretically)
 - o7 reactor - DONE (theoretically)
 - sticker display what streak you just broke - DONE (theoretically)
-- serverstats display how much everyone contributed
-- catlike typing detected
-- some kind of yo mama
 
 - stealing from people (punishment incl.)
   - if possible, lot of punishments - DONE (frameworks) - TODO: make faster
 - things to spend money on
-  - clown compressing
   - exchange money for @everyone - DONE (theoretically)
   - exchange money for increasing @everyone - DONE (theoretically)
-- elden ring message creator
+  - stat upgrades
 - !kys - DONE (theoretically)
 
 TODO: TEST EVERY FEATURE
@@ -92,15 +93,22 @@ CHANCE_DUMBASS = 1
 CHANCE_SALUTE = 2
 
 REQUIREMENT_HIVEMIND = 3
-
-COST_EVERYONE = 1000
 PUNISMENT_LENGTH = 4
+
+COST_EVERYONE = 1000 # ignore the fact that this isn't a constant
+
+COOLDOWN_KYS = 4
+COOLDOWN_EVERYONE = 24
+
+AMS_OFFSET = datetime.timedelta(hours=2) # fucking daylight savings
+# I KNOW THERES A BETTER WAY TO DO THIS IM JUST TOO LAZY
 
 # Globals
 last_message = ''
 client.insults = ['Idiot', 'Dumbass', 'Stupid', 'Unintelligent', 'Fool', 'Moron', 'Dummy', 'Daft', 'Unwise', 'Half-baked',
                   'Knobhead', 'Hingedly-impaired', 'Architectually challenged', 'Ill-advised', 'Imbecile', 'Dim', 'Unthinking',
-                  'Half-witted', 'Low intelligence specimen']
+                  'Half-witted', 'Low intelligence specimen'] # particularly fond of Architectually challenged
+
 client.punishments = {
                 'Uwutalk': "Write in uwutalk. Replace all 'r' and 'l' with 'w', add 'owo', 'uwu', ':3', or 'meow' or similar emoticons occasionally, and make the text sound cute and playful.",
                 'Shakespearean': "Transform the text into Shakespearean-style English, using old-timey words and poetic structures.",
@@ -112,6 +120,8 @@ client.punishments = {
                 # 'Gangster': "",
                 'Corporate': "Rewrite the text as if it were written in an overly formal, passive-aggressive corporate email. Use business jargon, polite but subtly condescending phrasing such as 'As per my last email', and unnecessarily professional language. The message should sound coldly efficient, yet slightly smug.",
                 'Biblical': "Rewrite the text so that it appears to be a direct passage from the Bible. Use old-fashioned biblical language and structure, such as 'Verily,' 'Thus saith the Lord,' and 'And it came to pass.' Maintain a tone of divine importance and prophetic authority. At the end of each sentence, include a made-up biblical citation, formatted like 'Book 3:16' or 'Epistle of Mark 12:4' to enhance authenticity.",
+                # 'French': "",
+                # 'Irish': ""
                 }
 
 
@@ -126,6 +136,8 @@ if TEST_MODE:
 #                                    Functions
 # -----------------------------------------------------------------------------------------
 
+
+# Probably not the greatest solution but i like it. 
 def guild_restriction(func):
 
     @functools.wraps(func)
@@ -173,17 +185,17 @@ async def get_all_dumbasses(guild):
             print(channel.name + ' done')
     print('everything done')
 
-async def mods_kill_this_guy(member: discord.Member, channel: discord.TextChannel, reason: str):
-    channel.send(f'''
-User @<{member.id}>, you have been deemed unworthy of life for the following reason:
-{reason}
-
-Any last words?
-''')
-    # task until they respond or 2 minutes
-    member.ban(delete_message_days=0,delete_message_seconds=0, reason="The law")
-    channel.send(f"User @<{member.id}> has been banned for 100000 seconds. o7")
-    #task to unban them 100000 seconds later
+# async def mods_kill_this_guy(member: discord.Member, channel: discord.TextChannel, reason: str):
+    # channel.send(f'''
+# User @<{member.id}>, you have been deemed unworthy of life for the following reason:
+# {reason}
+# 
+# Any last words?
+# ''')
+    # wait until they respond or 2 minutes
+    # member.ban(delete_message_days=0,delete_message_seconds=0, reason="The law")
+    # channel.send(f"User @<{member.id}> has been banned for 100000 seconds. o7")
+    # unban them 100000 seconds later
     
 def format_deltatime(time: datetime.timedelta) -> str:
     days = time.days
@@ -235,9 +247,6 @@ def compress_clown(user, amount):
 async def process_punishments(message: discord.Message) -> bool:
     punishm = dm.get_punishment(message.author.id)
     if punishm:
-        
-
-
         (p_type, start, length) = punishm
 
         if (start + length > datetime.datetime.now(datetime.timezone.utc)):
@@ -324,14 +333,16 @@ def door_check(message) -> bool:
 def money_check(user, amount) -> bool:
     return dm.get_money(user.id) >= amount
 
-def can_redeem(user, item) -> bool:
+def can_redeem(user, item, cooldown):
+    cd = datetime.timedelta(hours=cooldown)
     time: datetime.datetime = datetime.datetime.now(tz=datetime.timezone.utc)
     key = (user.id, item)
     if key not in dm.shop:
-        return True
+        return (True, 0)
     else:
         last_time: datetime.datetime = dm.shop[key]
-        return (time - last_time).days >= 1
+        boolean = (time - last_time) >= cd ## TODO this might be fucked
+        return (boolean, last_time)
 # -----------------------------------------------------------------------------------------
 #                                    Events
 # -----------------------------------------------------------------------------------------
@@ -476,15 +487,15 @@ async def hi(ctx:discord.ext.commands.Context):
     p_time = datetime.timedelta(minutes=1)
     dm.add_punishment(ctx.author.id, p_type, ctx.message.created_at, p_time)
     await ctx.send(f'punishment {p_type} succesfully added for {p_time}')
+    #TODO REMOVE THIS IN FINAL VERSION
     
 
 @client.command(name='balance')
 @guild_restriction
 async def balance(ctx):
     delta_time = dm.get_delta_daily(ctx.author.id)
-    ams_offset = datetime.timedelta(hours=1)
-    today_midnight = (datetime.datetime.now(datetime.timezone.utc)+ams_offset).replace(hour=0,minute=0,second=0,microsecond=0)
-    now = ctx.message.created_at+ams_offset
+    today_midnight = (datetime.datetime.now(datetime.timezone.utc)+AMS_OFFSET).replace(hour=0,minute=0,second=0,microsecond=0)
+    now = ctx.message.created_at+AMS_OFFSET
     bt = dm.get_bet(ctx.author.id)
     if not delta_time.days < 0:
         response = f'''
@@ -516,13 +527,11 @@ List of commands:
 - !bet [optional:user amount] - place a bet on who will be the next dumbass. If none provided displays the current bets
 - !balance - how poor you are, who you bet on
 - !rollies - gamba
-- !steal [amount] - lets you take money from others. But fuck around and eventually you will find out...
-- !buy [thing] - lets you buy things with your money
-
-Things (to buy) ((the cost is in {{}})):
-- everyone {{{COST_EVERYONE}}} - ping everyone. This will *surely* not get annoying very fast
-- increase_everyone [new cost] {{new cost}} - increase the cost of pinging eveyrone cuz honestly fuck that. NB: YOU *WILL* HAVE TO PAY AS MUCH AS THE COST YOU'RE TRYING TO SET IT TO
-- kys []
+- !steal [amount] - lets you take money from others.
+- !guards - GUAAAAAAARDS!! punish people who tried to steal from you in the past 15 mins
+- 
+- !buy [optional: thing] - lets you buy things with your money. Otherwise displays available purchases.
+- !kys [@user] - settle arguments with style, a 50/50 with a twist
 
 Coming soon™:
 - !incidents - a list of timestamps to all of your door check fails
@@ -534,8 +543,8 @@ Coming soon™:
 Patch notes:
 - !stats has a money leaderboard
 - !stats has a server option to check the collective idiocy
-- incidents now let you know the streak you just broke (for extra shame value)
-- capitalism! and stealing!
+- incidents now let you know the collective streak you just broke (for extra shame value)
+- capitalism! stealing! censorship!
 and more...
     '''
     
@@ -549,20 +558,32 @@ and more...
 @guild_restriction
 async def buy(ctx, *args):
     global COST_EVERYONE
-
     if len(args) == 0:
-        await ctx.send('Invalid arguments lol')
+        # get relevant stats from dm
+        await ctx.send(f'''
+Things (to buy) ((the cost is in {{}})):
+- everyone {{{COST_EVERYONE}}} - ping everyone. This will *surely* not get annoying very fast
+- increase_everyone [new cost] {{new cost}} - increase the cost of pinging eveyrone cuz honestly fuck that. NB: YOU *WILL* HAVE TO PAY AS MUCH AS THE COST YOU'RE TRYING TO SET IT TO
+- dex {{{dex_cost}}} - +1 to succeeding a steal (current: +{dex_current})
+- purse {{{purse_cost}}} - +1% money stolen (current: +{purse_current}%)
+                       ''')
         return
     else:
-        arg = args[0]
-        
+        arg = args[0].lower() if isinstance(args[0], str) else args[0]
         match arg:
+            case 'dex':
+                pass
+            case 'purse':
+                pass
             case 'everyone':
                 if not money_check(ctx.author, COST_EVERYONE):
                     await ctx.send('cashless behaviour')
                     return
-                if not can_redeem(ctx.author, 'everyone'):
-                    await ctx.send('yeah right. As if i would let you ping eveyrone more than once a day')
+                redeemable, tim = can_redeem(ctx.author, 'everyone', COOLDOWN_EVERYONE)
+                if not redeemable:
+                    now = datetime.datetime.now(datetime.timezone.utc)
+                    delta_time = (tim + COOLDOWN_EVERYONE) - now
+                    await ctx.send(f'yeah right. As if i would let you ping eveyrone more than once in 24 hrs (cd: {delta_time.seconds//3600} hour(s) {(delta_time.seconds%3600)//60} minute(s))')
                     return
                 dm.add_money(ctx.author.id, -1*COST_EVERYONE)
                 dm.shop[(ctx.author.id,'everyone')] = datetime.datetime.now(datetime.timezone.utc)
@@ -584,17 +605,18 @@ async def buy(ctx, *args):
                     return
                 dm.add_money(ctx.author.id, -1*new_cost)
                 COST_EVERYONE = new_cost
-                await ctx.send('An opressor has risen to deny the commonfolk its rights (price succesfully changed)')
+                await ctx.send('An opressor has risen to deny the commonfolk their rights (price succesfully changed)')
             case _:
                 await ctx.send('nah')
                 return
 
+#TODO this
 @client.command(name='incidents')
 @guild_restriction
 async def incidents(ctx, *args):
     pass
 
-# List statistics for yourself
+# List statistics
 @client.command(name='stats')
 @guild_restriction
 async def stats(ctx, *args):
@@ -703,10 +725,9 @@ async def bet(ctx, *args):
 @guild_restriction
 @client.command()
 async def rollies(ctx: discord.ext.commands.Context):
-    ams_offset = datetime.timedelta(hours=1)
-    today_midnight = (datetime.datetime.now(datetime.timezone.utc)+ams_offset).replace(hour=0,minute=0,second=0,microsecond=0)
-    lastd = dm.get_last_daily(ctx.author.id)+ams_offset
-    now = ctx.message.created_at+ams_offset
+    today_midnight = (datetime.datetime.now(datetime.timezone.utc)+AMS_OFFSET).replace(hour=0,minute=0,second=0,microsecond=0)
+    lastd = dm.get_last_daily(ctx.author.id)+AMS_OFFSET
+    now = ctx.message.created_at+AMS_OFFSET
     
     delta_time = today_midnight - lastd
     result = random.randint(1, 1000)
@@ -761,8 +782,28 @@ That being said enjoy your gamba:
 
 @guild_restriction
 @client.command
+async def steal(ctx: commands.Context, *args):
+    pass
+
+@guild_restriction
+@client.command
+async def guards(ctx: commands.Context, *args):
+    pass
+
+@guild_restriction
+@client.command
+async def charity(ctx: commands.Context, *args):
+    pass
+
+@guild_restriction
+@client.command
 async def kys(ctx: commands.Context, *args):
-    # TODO: give a 1 hr cooldown on this
+    redeemable, tim = can_redeem(ctx.author, 'kys', COOLDOWN_KYS)
+    if not redeemable:
+        now = datetime.datetime.now(datetime.timezone.utc)
+        delta_time = (tim + COOLDOWN_KYS) - now
+        await ctx.send(f'"Dont be a sour loser lmao"\n- Confusionus or smth (cd: {delta_time.seconds//3600} hour(s) {(delta_time.seconds%3600)//60} minute(s))')
+        return
     if not len(args) == 1:
         await ctx.send("Invalid arguments lol")
         return
@@ -772,6 +813,7 @@ async def kys(ctx: commands.Context, *args):
         return
     victim = random.choice(mention, ctx.author)
     punish(victim, ctx.channel, reason="krill yourshelf")
+    dm.shop[(victim.id,'kys')] = datetime.datetime.now(datetime.timezone.utc)
 
 # @guild_restriction
 # @client.command

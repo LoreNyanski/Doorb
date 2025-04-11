@@ -255,34 +255,3 @@ class Bet:
 
 if __name__ == "__main__":
     dm = Door_manager()
-
-    # print(dm.bets.data)
-    # print(dm.bets.table)
-    # dm.clearbets()
-    # print(dm.no_bets())
-    # print(dm.bets.get_payouts(3))
-    # print(dm.bets)
-    # print('{:10}'.format(6*'a'))
-    # print(dm.stats(294910192154443779,[1,2,3,294910192154443779], 'min'))
-    # print(dm.bets)
-    # print(dm.get_last_incident(0))
-    
-
-    # print(datetime.datetime.now())
-    # print(datetime.datetime.combine(datetime.date.today(), datetime.time()).astimezone(datetime.timezone.utc) - pd.to_datetime('2025-01-10 16:32:52.751600', utc=True))
-    # print((datetime.datetime.now(datetime.timezone.utc)+datetime.timedelta(hours=1)))
-    # print(datetime.datetime.now(datetime.timezone.utc))
-    # print((datetime.datetime.now(datetime.timezone.utc)+datetime.timedelta(hours=1)).replace(hour=0,minute=0,second=0,microsecond=0) - pd.to_datetime('2025-01-11 16:32:52.751600', utc=True))
-    
-    
-'''
-now:
-0.30 - utc: 23.30 yesterday
-
-last rolly:
-5 am yesterday - utc: 2am
-
-
-
-
-'''
