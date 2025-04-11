@@ -793,7 +793,54 @@ That being said enjoy your gamba:
 @guild_restriction
 async def steal(ctx: commands.Context, *args):
     dex, pouch = dm.get_steal_stats(ctx.author.id)
+    if len(args) == 0:
+        response = f'''
+DEX:   +{dex}
+POUCH: +{pouch}%
+Your success is calculated using:
+d100 + DEX({dex}) - PROT(1 per 10000 wealth your victim has)
+```
+1       | crit fail     | immedate guards
+2 - 50  | fail          | gain nothing
+51 - 90 | success       | 2(+{pouch})% of victim's wealth
+91 - 99 | great success | 4(+{pouch})% of victim's wealth
+100     | crit success  | 8(+{pouch})% of victim's wealth
+```
+rolling a 1 or 100 are always crit fail or success
+'''
+        await ctx.send(response)
+    elif len(args) == 1:
+        # TODO if the arg is not a user then fucky outy
+        victim_wealth = dm.get_money(victim.id)
+        roll = random.randint(1,100)
+        result = roll + dex - victim_wealth//10000
+        response = f'''
+{roll} + DEX({dex} - PROT({victim_wealth//10000}) = {result})
+'''
+        #TODO THE REST OF THIS SHIT
+        if roll == 100 or result >= 100:
+            return # crit succ
+        elif roll == 1 or result <= 100:
+            return # crit fail
+        elif result >= 91:
+            return # great succ
+        elif result >= 51:
+            return # succ
+        else:
+            return # fail
+    else:
+        await ctx.send('Invalid arguments lol')
+        return
+
     
+
+'''
+crit fail - 1 - punishment
+fail - 2-50 - 0%
+success - 51-90 - 2%
+great success - 91-99 - 4%
+crit success - 100 - 8%
+'''
 
     
 
