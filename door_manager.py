@@ -99,6 +99,8 @@ class Door_manager:
         self.steals[user_id].clear()
     def add_punishment(self, user_id:int, punishment_type:str, start:datetime.datetime, length: int):
         self.punishments[user_id] = (punishment_type, start, length)
+    def add_steal_attempt(self, perp_id, victim_id, time, amount):
+        self.steals[victim_id][perp_id] = (time, amount)
 
     # Change money of user
     @op_userdata

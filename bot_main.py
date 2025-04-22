@@ -16,7 +16,7 @@ from discord.ext import commands
 import discord.ext
 import discord.ext.commands
 from door_manager import Door_manager
-from ai import textGenerate
+from ai import *
 from dotenv import load_dotenv
 # from games import
 
@@ -29,7 +29,6 @@ TODO LIST
 - hivemind automatically activates in new channels
 - David scale of things
 - add custom names
-- catlike typing detect
 - serverstats display how much everyone contributed
 - catlike typing detected
 - some kind of yo mama
@@ -41,14 +40,14 @@ TODO LIST
 
 '''
 This patch:
-- add balance to stats (see whos richest) - DONE (theoretically)
-- serverstats check the COLLECTIVE streaks and incidents (serverstats mean gives a leaderboard) - DONE (theoretically)
-- o7 reactor - DONE (theoretically)
-- sticker display what streak you just broke - DONE (theoretically)
-- deleting message deletes your incident aswell
+- editing a message into command actually does the command - DONE
+- add balance to stats (see whos richest) - DONE
+- serverstats check the COLLECTIVE streaks and incidents (serverstats mean gives a leaderboard) - DONE
+- o7 reactor - DONE
+- sticker display what streak you just broke - DONE
 
-- stealing from people (punishment incl.)
-  - if possible, lot of punishments - DONE (frameworks) - TODO: make faster
+- stealing from people (punishment incl.) - DONE
+  - if possible, lot of punishments - DONE TODO: make openai swear more
 - things to spend money on
   - exchange money for @everyone - DONE (theoretically)
   - exchange money for increasing @everyone - DONE (theoretically)
@@ -65,6 +64,7 @@ TEST_MODE = True
 
 TOKEN = os.getenv('DISCORD_TOKEN')
 shibe = os.getenv('shibe')
+me = os.getenv('me')
 
 test_guild = os.getenv('test_guild')
 main_guild = os.getenv('main_guild')
@@ -99,6 +99,7 @@ REQUIREMENT_HIVEMIND = 3
 PUNISMENT_LENGTH = datetime.timedelta(hours=4)
 
 COST_EVERYONE = 1000 # ignore the fact that this isn't a constant
+COST_COOKIE = 10000
 
 COOLDOWN_KYS = datetime.timedelta(hours=4)
 COOLDOWN_EVERYONE = datetime.timedelta(hours=24)
@@ -113,22 +114,6 @@ last_message = ''
 client.insults = ['Idiot', 'Dumbass', 'Stupid', 'Unintelligent', 'Fool', 'Moron', 'Dummy', 'Daft', 'Unwise', 'Half-baked',
                   'Knobhead', 'Hingedly-impaired', 'Architectually challenged', 'Ill-advised', 'Imbecile', 'Dim', 'Unthinking',
                   'Half-witted', 'Low intelligence specimen'] # particularly fond of Architectually challenged
-
-client.punishments = {
-                'Uwutalk': "Write in uwutalk. Replace all 'r' and 'l' with 'w', add 'owo', 'uwu', ':3', or 'meow' or similar emoticons occasionally, and make the text sound cute and playful.",
-                'Shakespearean': "Transform the text into Shakespearean-style English, using old-timey words and poetic structures.",
-                # 'Depressed Pirate': "Rewrite the text as if spoken by a pirate currently going through a depressive episode but trying to hide it",
-                'Gen-Z': "Rewrite the text using excessive modern internet slang, memes, and casual phrasing used by younger generations. Include these phrases when it is appropriate: Skibidi, gyatt, mewing, mew, rizz, rizzing, rizzler, on Skibidi, sigma, what the sigma, Ohio, bussin, cook, cooking, let him/her cook, baddie, Skibidi rizz, fanum tax, Fanum taxing, drake, nonchalant dread head, aura, grimace shake, edging, edge, goon, gooning, looks maxing, alpha, griddy, blud, Sus, sussy, imposter, among us, L, mog, mogging, yap, yapping, yapper, cap, Ohio.",
-                'Fratbro': "Rewrite the text as if spoken by a stereotypical frat bro. Use casual, energetic language with excessive confidence. Sprinkle in gym references, party slang, and bro-talk. Prioritize short, punchy sentences with words like 'dude', 'bro' and 'lets goooo'.",
-                # 'Shit yourself': "Rewrite the text as if the speaker is actively in the process of uncontrollably defecating and struggling to communicate. Insert stuttering, abrupt pauses, explicit references to the fact that you are on the verge of shitting yourself and expressions of distress or panic.",
-                'Emojify': "Rewrite the text using only emojis while ensuring the original meaning remains clear. Absolutely no words, letters, or punctuation marks may be used—only emojis and spaces to seperate concepts. Choose the most universally recognizable emojis to represent concepts, avoiding any that might be confusing. The structure should remain logical, and thus you may use multiple emojis to represent one concept",
-                # 'Gangster': "",
-                'Corporate': "Rewrite the text as if it were written in an overly formal, passive-aggressive corporate email. Use business jargon, polite but subtly condescending phrasing such as 'As per my last email', and unnecessarily professional language. The message should sound coldly efficient, yet slightly smug.",
-                'Biblical': "Rewrite the text so that it appears to be a direct passage from the Bible. Use old-fashioned biblical language and structure, such as 'Verily,' 'Thus saith the Lord,' and 'And it came to pass.' Maintain a tone of divine importance and prophetic authority. At the end of each sentence, include a made-up biblical citation, formatted like 'Book 3:16' or 'Epistle of Mark 12:4' to enhance authenticity.",
-                # 'French': "",
-                # 'Irish': ""
-                }
-
 
 client.active_sticker = int(tracked_sticker)
 client.active_guild = int(main_guild)
@@ -264,7 +249,7 @@ async def process_punishments(message: discord.Message) -> bool:
 
                     msgreference = message.reference
 
-                    newmsg = textGenerate(personality=client.punishments[p_type], message=message.content)
+                    newmsg = textGenerate(personality=p_type, message=message.content)
                     cont = (f'> <@{msgreference.resolved.author.id}>: ' + msgreference.jump_url + '\n' + newmsg) if (msgreference and msgreference.resolved and isinstance(msgreference.resolved, discord.Message)) else newmsg
 
                     webhook = await get_webhook(message.channel)
@@ -283,7 +268,7 @@ async def process_punishments(message: discord.Message) -> bool:
         return False
 
 async def punish(user_id, channel, reason):
-    p_type = random.choice(list(client.punishments.keys()))
+    p_type = random.choice(list(punishments.keys()))
     dm.add_punishment(user_id, p_type, datetime.datetime.now(tz=datetime.timezone.utc), PUNISMENT_LENGTH)
     await channel.send(f'''
 User <@{user_id}>, you have been deemed unworthy of free speech for the following reason:
@@ -383,6 +368,11 @@ async def on_message_removed(message):
     if door_check(message):
     # TODO IF IT WAS A STICKER MESSAGE THEN REMOVE THE INCIDENT
         pass
+
+@client.event
+@guild_restriction
+async def on_message_edit(before, after):
+    await client.process_commands(after)
 
 @client.event
 async def on_command(ctx):
@@ -485,7 +475,7 @@ Correct guessers: {}'''.format(', '.join([client.get_guild(client.active_guild).
 @guild_restriction
 async def hi(ctx:discord.ext.commands.Context):
     await ctx.send('haiii :3')
-    p_type = random.choice(list(client.punishments.keys()))
+    p_type = random.choice(list(punishments.keys()))
     p_time = datetime.timedelta(minutes=1)
     dm.add_punishment(ctx.author.id, p_type, ctx.message.created_at, p_time)
     await ctx.send(f'punishment {p_type} succesfully added for {p_time}')
@@ -565,6 +555,7 @@ Things (to buy) ((the cost is in {{}})):
 - increase_everyone [new cost] {{new cost}} - increase the cost of pinging eveyrone cuz honestly fuck that. NB: YOU *WILL* HAVE TO PAY AS MUCH AS THE COST YOU'RE TRYING TO SET IT TO
 - dex {{{dex_cost}}} - +1 to succeeding a steal (current: +{dex_current})
 - pouch {{{pouch_cost}}} - +1% money stolen (current: +{pouch_current}%)
+- ookie {{{COST_COOKIE}}} - Lore will buy you a cookie unlike *someone*
                        ''')
         return
     else:
@@ -613,6 +604,12 @@ Things (to buy) ((the cost is in {{}})):
                 dm.add_money(ctx.author.id, -1*new_cost)
                 COST_EVERYONE = new_cost
                 await ctx.send('An opressor has risen to deny the commonfolk their rights (price succesfully changed)')
+            case 'ookie':
+                if not money_check(ctx.author, COST_COOKIE):
+                    await ctx.send('cashless behaviour')
+                    return
+                dm.add_money(ctx.author.id, -1*COST_COOKIE)
+                await ctx.send(f'<@{me}> cookie has been redeemed')
             case _:
                 await ctx.send('nah')
                 return
@@ -810,39 +807,43 @@ rolling a 1 or 100 are always crit fail or success
 '''
         await ctx.send(response)
     elif len(args) == 1:
-        # TODO if the arg is not a user then fucky outy
+        victim = ctx.guild.get_member_named(str(args[0]))
+        if victim == None:
+            await ctx.send('No user with that name')
+            return 
         victim_wealth = dm.get_money(victim.id)
         roll = random.randint(1,100)
         result = roll + dex - victim_wealth//10000
         response = f'''
-{roll} + DEX({dex} - PROT({victim_wealth//10000}) = {result})
+{roll} + DEX({dex} - PROT({victim_wealth//10000}) = {result})\n
 '''
-        #TODO THE REST OF THIS SHIT
-        if roll == 100 or result >= 100:
-            return # crit succ
-        elif roll == 1 or result <= 100:
-            return # crit fail
+        #this is horribly implemented but i don't care
+        if roll == 1 or result <= 1:
+            await ctx.send(response + "uh oh...")
+            await punish(ctx.author.id, ctx.channel, reason="Generational fumble")
+            return
+        elif roll == 100 or result >= 100:
+            stolen = victim_wealth*((8+pouch)/100)
+            dm.add_money(ctx.author.id, stolen)
+            dm.add_money(victim.id, -1*stolen)
+            await ctx.send(response + f"Critical success!!\nStolen: {stolen} (New balance: {dm.get_money(ctx.author.id)})")
         elif result >= 91:
-            return # great succ
+            stolen = victim_wealth*((4+pouch)/100)
+            dm.add_money(ctx.author.id, stolen)
+            dm.add_money(victim.id, -1*stolen)
+            await ctx.send(response + f"Great success!\nStolen: {stolen} (New balance: {dm.get_money(ctx.author.id)})")
         elif result >= 51:
-            return # succ
+            stolen = victim_wealth*((2+pouch)/100)
+            dm.add_money(ctx.author.id, stolen)
+            dm.add_money(victim.id, -1*stolen)
+            await ctx.send(response + f"Success\nStolen: {stolen} (New balance: {dm.get_money(ctx.author.id)})")
         else:
-            return # fail
+            stolen = 0
+            await ctx.send(response + "Mission failed, we'll get 'em next time")
+        dm.add_steal_attempt(ctx.author.id, victim.id, datetime.datetime.now(datetime.timezone.utc), stolen)
     else:
         await ctx.send('Invalid arguments lol')
         return
-
-    
-
-'''
-crit fail - 1 - punishment
-fail - 2-50 - 0%
-success - 51-90 - 2%
-great success - 91-99 - 4%
-crit success - 100 - 8%
-'''
-
-    
 
 @client.command(name='guards')
 @guild_restriction
@@ -955,7 +956,7 @@ async def kys(ctx: commands.Context, *args):
 # Run the client
 if __name__ == "__main__":
     client.run(TOKEN, log_handler=handler, log_level=logging.DEBUG)
-    # print(client.punishments.keys())
+    # print(punishments.keys())
 
 
 
