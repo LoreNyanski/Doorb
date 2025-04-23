@@ -20,42 +20,6 @@ from ai import *
 from dotenv import load_dotenv
 # from games import
 
-'''
-TODO LIST
-- Send embeds instead of messages.
-- Make statistics more interpretable. (graph)
-- on message delete 
-- list of all incidents of a user with jump links
-- hivemind automatically activates in new channels
-- David scale of things
-- add custom names
-- serverstats display how much everyone contributed
-- catlike typing detected
-- some kind of yo mama
-- elden ring message creator
-- clown compressing
-- !woke - youll see (eventually frfr)
-- deleting incidents deleting instances in the database aswell
-'''
-
-'''
-This patch:
-- editing a message into command actually does the command - DONE
-- add balance to stats (see whos richest) - DONE
-- serverstats check the COLLECTIVE streaks and incidents (serverstats mean gives a leaderboard) - DONE
-- o7 reactor - DONE
-- sticker display what streak you just broke - DONE
-
-- stealing from people (punishment incl.) - DONE
-  - if possible, lot of punishments - DONE 
-- things to spend money on
-  - exchange money for @everyone - DONE
-  - exchange money for increasing @everyone - DONE
-  - stat upgrades
-- !kys - DONE
-'''
-
-
 load_dotenv()
 TEST_MODE = False
 
