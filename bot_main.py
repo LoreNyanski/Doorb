@@ -47,20 +47,17 @@ This patch:
 - sticker display what streak you just broke - DONE
 
 - stealing from people (punishment incl.) - DONE
-  - if possible, lot of punishments - DONE TODO: make openai swear more
+  - if possible, lot of punishments - DONE 
 - things to spend money on
-  - exchange money for @everyone - DONE (theoretically)
-  - exchange money for increasing @everyone - DONE (theoretically)
+  - exchange money for @everyone - DONE
+  - exchange money for increasing @everyone - DONE
   - stat upgrades
-- !kys - DONE (theoretically)
-
-TODO: TEST EVERY FEATURE
-
+- !kys - DONE
 '''
 
 
 load_dotenv()
-TEST_MODE = True
+TEST_MODE = False
 
 TOKEN = os.getenv('DISCORD_TOKEN')
 shibe = os.getenv('shibe')
@@ -96,13 +93,15 @@ CHANCE_DUMBASS = 1
 CHANCE_SALUTE = 2
 
 REQUIREMENT_HIVEMIND = 3
-PUNISMENT_LENGTH = datetime.timedelta(hours=4)
+
+LENGTH_PUNISHMENT = datetime.timedelta(hours=4)
 
 COST_EVERYONE = 1000 # ignore the fact that this isn't a constant
 COST_COOKIE = 10000
 
 COOLDOWN_KYS = datetime.timedelta(hours=4)
 COOLDOWN_EVERYONE = datetime.timedelta(hours=24)
+COOLDOWN_STEAL = datetime.timedelta(hours=4)
 
 TIME_GUARDS = datetime.timedelta(minutes=15)
 
@@ -269,12 +268,12 @@ async def process_punishments(message: discord.Message) -> bool:
 
 async def punish(user_id, channel, reason):
     p_type = random.choice(list(punishments.keys()))
-    dm.add_punishment(user_id, p_type, datetime.datetime.now(tz=datetime.timezone.utc), PUNISMENT_LENGTH)
+    dm.add_punishment(user_id, p_type, datetime.datetime.now(tz=datetime.timezone.utc), LENGTH_PUNISHMENT)
     await channel.send(f'''
 User <@{user_id}>, you have been deemed unworthy of free speech for the following reason:
 {reason}
 
-You are only allowed to speak in {p_type} for approximately {PUNISMENT_LENGTH.seconds//3600} hours
+You are only allowed to speak in {p_type} for approximately {LENGTH_PUNISHMENT.seconds//3600} hours
 ''')
 
 async def get_webhook(channel) -> discord.Webhook:
@@ -515,15 +514,15 @@ I am here to tell you who's the biggest dumbass on your discord server.
 
 List of commands:
 - !help - youre reading it rn idiot
-- !stats [optional: @user | server | mean, median, max, min, count, last, money] - displays your/someone else's stats | the server's collective stats | the leaderboard in provided statistic on the server
+- !stats [optional: @user | server | mean, median, max, min, count, last, balance] - displays your/someone else's stats | the server's collective stats | the leaderboard in provided statistic on the server
 - !bet [optional: (@)user amount] - place a bet on who will be the next dumbass. If none provided displays the current bets
-- !balance - how poor you are, who you bet on
+- !kys [@user] - settle arguments with style, a 50/50 with a twist. It also works if you just reply to someone
 - !rollies - gamba
+- !balance - how poor you are, who you bet on
+- !buy [optional: thing] - lets you buy things with your money. Otherwise displays available purchases.
+- !charity [(@)user amount] - be a benevolent god
 - !steal [user] - lets you take money from others.
 - !guards - GUAAAAAAARDS!! punish people who tried to steal from you in the past 15 mins
-- !charity [(@)user amount] - be a benevolent god
-- !buy [optional: thing] - lets you buy things with your money. Otherwise displays available purchases.
-- !kys [@user] - settle arguments with style, a 50/50 with a twist. It also works if you just reply to someone
 
 Patch notes:
 - !stats has a money leaderboard
@@ -545,8 +544,8 @@ and more...
 async def buy(ctx: commands.Context, *args):
     global COST_EVERYONE
     dex_current, pouch_current = dm.get_steal_stats(ctx.author.id)
-    dex_cost = 3000*dex_current
-    pouch_cost = 5000*pouch_current
+    dex_cost = 2000*(dex_current+1)
+    pouch_cost = 3000*(pouch_current+1)
     if len(args) == 0:
         # get relevant stats from dm
         await ctx.send(f'''
@@ -567,12 +566,14 @@ Things (to buy) ((the cost is in {{}})):
                     return
                 dm.add_money(ctx.author.id, -1*dex_cost)
                 dm.increase_dex(ctx.author.id)
+                await ctx.send(f'purchase successful (New DEX: +{dex_current+1})')
             case 'pouch':
                 if not money_check(ctx.author, pouch_cost):
                     await ctx.send('cashless behaviour')
                     return
                 dm.add_money(ctx.author.id, -1*pouch_cost)
                 dm.increase_dex(ctx.author.id)
+                await ctx.send(f'purchase successful (New POUCH: +{pouch_current+1}%)')
             case 'everyone':
                 if not money_check(ctx.author, COST_EVERYONE):
                     await ctx.send('cashless behaviour')
@@ -620,6 +621,11 @@ Things (to buy) ((the cost is in {{}})):
 async def incidents(ctx, *args):
     pass
 
+@client.command(name='clear')
+@guild_restriction
+async def clear(ctx, *args):
+    dm.clear_punishment(ctx.author.id)
+
 # List statistics
 @client.command(name='stats')
 @guild_restriction
@@ -640,7 +646,7 @@ async def stats(ctx, *args):
         response = format_stats(ctx.guild)
         await ctx.send(response)
         return
-    elif arg in ['mean', 'count', 'median', 'max', 'min', 'last', 'money']:
+    elif arg in ['mean', 'count', 'median', 'max', 'min', 'last', 'balance']:
         stat = arg
         res = dm.stats(ctx.author.id, [member.id for member in ctx.guild.members], stat)
         if stat == 'count':
@@ -662,7 +668,7 @@ async def stats(ctx, *args):
             case 'max': response = 'Longest streak without incidents:' + response
             case 'min': response = 'Shortest streak without incidents:' + response
             case 'last': response = 'Current streaks:' + response
-            case 'money': response = 'Who has the most bisches (and cash):' + response
+            case 'balance': response = 'Who has the most bisches (and cash):' + response
         await ctx.send(response)
         return
     else:   
@@ -794,8 +800,9 @@ async def steal(ctx: commands.Context, *args):
         response = f'''
 DEX:   +{dex}
 POUCH: +{pouch}%
+
 Your success is calculated using:
-d100 + DEX({dex}) - PROT(1 per 10000 wealth your victim has)
+d100 + DEX({dex}) - PROT(1 per 10000 of victim wealth)
 ```
 1       | crit fail     | immedate guards
 2 - 50  | fail          | gain nothing
@@ -810,7 +817,13 @@ rolling a 1 or 100 are always crit fail or success
         victim = ctx.guild.get_member_named(str(args[0]))
         if victim == None:
             await ctx.send('No user with that name')
-            return 
+            return
+        redeemable, tim = can_redeem(ctx.author, 'steal', COOLDOWN_STEAL)
+        if not redeemable:
+            now = datetime.datetime.now(datetime.timezone.utc)
+            delta_time = (tim + COOLDOWN_STEAL) - now
+            await ctx.send(f'Only 1 theft per 4 hrs sorrgy (cd: {delta_time.seconds//3600} hour(s) {(delta_time.seconds%3600)//60} minute(s))')
+            return
         victim_wealth = dm.get_money(victim.id)
         roll = random.randint(1,100)
         result = roll + dex - victim_wealth//10000
@@ -823,17 +836,17 @@ rolling a 1 or 100 are always crit fail or success
             await punish(ctx.author.id, ctx.channel, reason="Generational fumble")
             return
         elif roll == 100 or result >= 100:
-            stolen = victim_wealth*((8+pouch)/100)
+            stolen = round(victim_wealth*((8+pouch)/100))
             dm.add_money(ctx.author.id, stolen)
             dm.add_money(victim.id, -1*stolen)
             await ctx.send(response + f"Critical success!!\nStolen: {stolen} (New balance: {dm.get_money(ctx.author.id)})")
         elif result >= 91:
-            stolen = victim_wealth*((4+pouch)/100)
+            stolen = round(victim_wealth*((4+pouch)/100))
             dm.add_money(ctx.author.id, stolen)
             dm.add_money(victim.id, -1*stolen)
             await ctx.send(response + f"Great success!\nStolen: {stolen} (New balance: {dm.get_money(ctx.author.id)})")
         elif result >= 51:
-            stolen = victim_wealth*((2+pouch)/100)
+            stolen = round(victim_wealth*((2+pouch)/100))
             dm.add_money(ctx.author.id, stolen)
             dm.add_money(victim.id, -1*stolen)
             await ctx.send(response + f"Success\nStolen: {stolen} (New balance: {dm.get_money(ctx.author.id)})")
@@ -841,6 +854,7 @@ rolling a 1 or 100 are always crit fail or success
             stolen = 0
             await ctx.send(response + "Mission failed, we'll get 'em next time")
         dm.add_steal_attempt(ctx.author.id, victim.id, datetime.datetime.now(datetime.timezone.utc), stolen)
+        dm.shop[(ctx.author.id,'steal')] = datetime.datetime.now(datetime.timezone.utc)
     else:
         await ctx.send('Invalid arguments lol')
         return
@@ -955,8 +969,10 @@ async def kys(ctx: commands.Context, *args):
 
 # Run the client
 if __name__ == "__main__":
-    client.run(TOKEN, log_handler=handler, log_level=logging.DEBUG)
-    # print(punishments.keys())
+    if TEST_MODE:
+        client.run(TOKEN, log_handler=handler, log_level=logging.DEBUG)
+    else:
+        client.run(TOKEN, log_handler=handler, log_level=logging.INFO)
 
 
 

@@ -95,6 +95,9 @@ class Door_manager:
         return self.steals[user_id] if (user_id in self.steals.keys()) else None
     
 
+    def clear_punishment(self, user_id):
+        if user_id in self.punishments.keys():
+            self.punishments.pop(user_id)
     def clear_steals(self, user_id):
         self.steals[user_id].clear()
     def add_punishment(self, user_id:int, punishment_type:str, start:datetime.datetime, length: int):
