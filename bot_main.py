@@ -58,14 +58,14 @@ CHANCE_SALUTE = 2
 
 REQUIREMENT_HIVEMIND = 3
 
-LENGTH_PUNISHMENT = datetime.timedelta(hours=4)
+LENGTH_PUNISHMENT = datetime.timedelta(minutes=30)
 
 COST_EVERYONE = 1000 # ignore the fact that this isn't a constant
 COST_COOKIE = 10000
 
-COOLDOWN_KYS = datetime.timedelta(hours=4)
+COOLDOWN_KYS = datetime.timedelta(minutes=30)
 COOLDOWN_EVERYONE = datetime.timedelta(hours=24)
-COOLDOWN_STEAL = datetime.timedelta(hours=4)
+COOLDOWN_STEAL = datetime.timedelta(hours=3)
 
 TIME_GUARDS = datetime.timedelta(minutes=15)
 
@@ -137,18 +137,6 @@ async def get_all_dumbasses(guild):
                     dm.new_dumbass(message.author.id, message.created_at)
             print(channel.name + ' done')
     print('everything done')
-
-# async def mods_kill_this_guy(member: discord.Member, channel: discord.TextChannel, reason: str):
-    # channel.send(f'''
-# User @<{member.id}>, you have been deemed unworthy of life for the following reason:
-# {reason}
-# 
-# Any last words?
-# ''')
-    # wait until they respond or 2 minutes
-    # member.ban(delete_message_days=0,delete_message_seconds=0, reason="The law")
-    # channel.send(f"User @<{member.id}> has been banned for 100000 seconds. o7")
-    # unban them 100000 seconds later
     
 def format_deltatime(time: datetime.timedelta) -> str:
     days = time.days
@@ -209,11 +197,18 @@ async def process_punishments(message: discord.Message) -> bool:
 
                 if not message.content == '':
                     await message.delete()
-
                     msgreference = message.reference
 
                     newmsg = textGenerate(personality=p_type, message=message.content)
-                    cont = (f'> <@{msgreference.resolved.author.id}>: ' + msgreference.jump_url + '\n' + newmsg) if (msgreference and msgreference.resolved and isinstance(msgreference.resolved, discord.Message)) else newmsg
+
+                    if (msgreference and msgreference.resolved and isinstance(msgreference.resolved, discord.Message)):
+                        if msgreference.resolved.webhook_id:                   
+                            reply_id = message.guild.get_member_named(msgreference.resolved.author.display_name).id
+                        else:
+                            reply_id = msgreference.resolved.author.id
+                        cont = (f'> <@{reply_id}>: ' + msgreference.jump_url + '\n' + newmsg) 
+                    else: 
+                        cont = newmsg
 
                     webhook = await get_webhook(message.channel)
 
@@ -222,6 +217,8 @@ async def process_punishments(message: discord.Message) -> bool:
                         username=message.author.display_name,
                         avatar_url=message.author.avatar.url if message.author.avatar else message.author.default_avatar.url,
                     )
+                else:
+                    return False
         
             except Exception as e:
                 print(f"Error: {e}")
@@ -237,7 +234,7 @@ async def punish(user_id, channel, reason):
 User <@{user_id}>, you have been deemed unworthy of free speech for the following reason:
 {reason}
 
-You are only allowed to speak in {p_type} for approximately {LENGTH_PUNISHMENT.seconds//3600} hours
+You are only allowed to speak in {p_type} for approximately {LENGTH_PUNISHMENT.seconds//60} minutes
 ''')
 
 async def get_webhook(channel) -> discord.Webhook:
@@ -252,6 +249,7 @@ async def get_webhook(channel) -> discord.Webhook:
     
     webhook_cache[channel.id] = webhook
     return webhook
+
 # -----------------------------------------------------------------------------------------
 #                                    Predicates
 # -----------------------------------------------------------------------------------------
@@ -336,6 +334,18 @@ async def on_message_removed(message):
 @guild_restriction
 async def on_message_edit(before, after):
     await client.process_commands(after)
+
+@client.event
+async def on_raw_reaction_add(payload:discord.RawReactionActionEvent):
+    # fetching message
+    channel = client.get_channel(payload.channel_id)
+    message = await channel.fetch_message(payload.message_id)
+
+    # check for correct reaction and msg
+    if str(payload.emoji.name) == '❌':
+        if message.webhook_id:
+            if message.guild.get_member_named(message.author.display_name).id == payload.user_id: 
+                await message.delete()
 
 @client.event
 async def on_command(ctx):
@@ -473,32 +483,43 @@ Current bet: {"None" if bt[0]==0 else client.get_guild(client.active_guild).get_
 async def help(ctx):
     response = f'''
 Welcome to doorbot! 
-
 I am here to tell you who's the biggest dumbass on your discord server.
 
 List of commands:
 - !help - youre reading it rn idiot
-- !stats [optional: @user | server | mean, median, max, min, count, last, balance] - displays your/someone else's stats | the server's collective stats | the leaderboard in provided statistic on the server
+- !patch - patch notes for the most recent update
+- !stats [optional: @user, server, mean, median, max, min, count, last, balance] - displays your/someone else's stats | the server's collective stats | the leaderboard in provided statistic on the server
 - !bet [optional: (@)user amount] - place a bet on who will be the next dumbass. If none provided displays the current bets
-- !kys [@user] - settle arguments with style, a 50/50 with a twist. It also works if you just reply to someone
 - !rollies - gamba
 - !balance - how poor you are, who you bet on
+NEW:
 - !buy [optional: thing] - lets you buy things with your money. Otherwise displays available purchases.
 - !charity [(@)user amount] - be a benevolent god
 - !steal [user] - lets you take money from others.
 - !guards - GUAAAAAAARDS!! punish people who tried to steal from you in the past 15 mins
-
-Patch notes:
-- !stats has a money leaderboard
-- !stats has a server option to check the collective idiocy
-- incidents now let you know the collective streak you just broke (for extra shame value)
-- !kys added. Try it out :D
-- capitalism! stealing! censorship! 
-and more...
-    '''
+- !kys [@user] - settle arguments with style, a 50/50 with a twist. It also works if you just reply to someone
+'''
     
     await ctx.send(response)
 
+@client.command(name='patch')
+@guild_restriction
+async def patch(ctx):
+    response = f'''
+Patch notes:
+- added !patch
+- editing a message now processes commands 
+- drastically decreased punishment length (it got old very quickly)
+- tweaked purchase values
+- fixed pouch showing up as float (this one might come back idk)
+- fixed stickers not working under punishment
+- fixed !stats balance not working
+- reacting X to a punishment message now deletes it
+- replying to a punishment message now correctly replies
+- minor fixes
+'''
+
+    await ctx.send(response)
 # -----------------------------------------------------------------------------------------
 #                                   Door shenanigans
 # -----------------------------------------------------------------------------------------
@@ -508,16 +529,17 @@ and more...
 async def buy(ctx: commands.Context, *args):
     global COST_EVERYONE
     dex_current, pouch_current = dm.get_steal_stats(ctx.author.id)
-    dex_cost = 2000*(dex_current+1)
-    pouch_cost = 3000*(pouch_current+1)
+    dex_cost = 1000 + 500*dex_current
+    pouch_cost = 1000 + 500*pouch_current
     if len(args) == 0:
         # get relevant stats from dm
         await ctx.send(f'''
-Things (to buy) ((the cost is in {{}})):
+Syntax: !buy [thing] [optional: other parameters]
+Things (the cost is in {{}}):
 - everyone {{{COST_EVERYONE}}} - ping everyone. This will *surely* not get annoying very fast
 - increase_everyone [new cost] {{new cost}} - increase the cost of pinging eveyrone cuz honestly fuck that. NB: YOU *WILL* HAVE TO PAY AS MUCH AS THE COST YOU'RE TRYING TO SET IT TO
-- dex {{{dex_cost}}} - +1 to succeeding a steal (current: +{dex_current})
-- pouch {{{pouch_cost}}} - +1% money stolen (current: +{pouch_current}%)
+- dex {{{dex_cost}}} - +1 to succeeding a steal, cost increases after each purchase (current: +{dex_current})
+- pouch {{{pouch_cost}}} - +1% money stolen, cost increases after each purchase (current: +{pouch_current}%)
 - ookie {{{COST_COOKIE}}} - Lore will buy you a cookie unlike *someone*
                        ''')
         return
@@ -536,7 +558,7 @@ Things (to buy) ((the cost is in {{}})):
                     await ctx.send('cashless behaviour')
                     return
                 dm.add_money(ctx.author.id, -1*pouch_cost)
-                dm.increase_dex(ctx.author.id)
+                dm.increase_pouch(ctx.author.id)
                 await ctx.send(f'purchase successful (New POUCH: +{pouch_current+1}%)')
             case 'everyone':
                 if not money_check(ctx.author, COST_EVERYONE):
@@ -616,7 +638,7 @@ async def stats(ctx, *args):
         if stat == 'count':
             res = [(ctx.guild.get_member(user_id).name, str(count)) for user_id, count in res[:10]]
             longest_name = max([len(name) for name,time in res])
-        if stat == 'money':
+        if stat == 'balance':
             res = [(ctx.guild.get_member(user_id).name, str(money)) for user_id, money in res[:10]]
             longest_name = max([len(name) for name,time in res])
         else:
@@ -786,13 +808,13 @@ rolling a 1 or 100 are always crit fail or success
         if not redeemable:
             now = datetime.datetime.now(datetime.timezone.utc)
             delta_time = (tim + COOLDOWN_STEAL) - now
-            await ctx.send(f'Only 1 theft per 4 hrs sorrgy (cd: {delta_time.seconds//3600} hour(s) {(delta_time.seconds%3600)//60} minute(s))')
+            await ctx.send(f'Only 1 theft per 3 hrs sorrgy (cd: {delta_time.seconds//3600} hour(s) {(delta_time.seconds%3600)//60} minute(s))')
             return
         victim_wealth = dm.get_money(victim.id)
         roll = random.randint(1,100)
         result = roll + dex - victim_wealth//10000
         response = f'''
-{roll} + DEX({dex} - PROT({victim_wealth//10000}) = {result})\n
+{roll} + DEX({dex}) - PROT({victim_wealth//10000}) = {result}\n
 '''
         #this is horribly implemented but i don't care
         if roll == 1 or result <= 1:

@@ -6,7 +6,7 @@ import bisect
 from collections import defaultdict
 
 
-default_values_userdata = {'money':500,'last_daily':datetime.datetime.now(datetime.timezone.utc)-datetime.timedelta(days=1),'bet_user_id':0,'bet_amount':0, 'dex':0, 'stealth':0}
+default_values_userdata = {'money':500,'last_daily':datetime.datetime.now(datetime.timezone.utc)-datetime.timedelta(days=1),'bet_user_id':0, 'bet_amount':0, 'dex':0, 'pouch':0}
 ams_offset = datetime.timedelta(hours=1)
 pd.options.mode.chained_assignment = None # I don't care pandas
 
@@ -194,7 +194,7 @@ class Door_manager:
             if stat == 'count':
                 ehe = [(user, len(self.data[user])) for user in user_ids]
                 ehe.sort(key= lambda x: x[1], reverse=True)
-            elif stat == 'money':
+            elif stat == 'balance':
                 ehe = [(user, self.get_money(user)) for user in user_ids]
                 ehe.sort(key= lambda x: x[1], reverse=True)
             elif stat == 'last':
