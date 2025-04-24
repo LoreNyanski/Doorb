@@ -1,7 +1,9 @@
 from openai import OpenAI
 import os
 import random
+from dotenv import load_dotenv
 
+load_dotenv()
 OPEN_AI_TOKEN = os.getenv('OPEN_AI_TOKEN')
 client = OpenAI(api_key=OPEN_AI_TOKEN)
 
