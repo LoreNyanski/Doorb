@@ -21,7 +21,7 @@ from dotenv import load_dotenv
 # from games import
 
 load_dotenv()
-TEST_MODE = False
+TEST_MODE = True
 
 TOKEN = os.getenv('DISCORD_TOKEN')
 shibe = os.getenv('shibe')
@@ -65,9 +65,10 @@ COST_COOKIE = 10000
 
 COOLDOWN_KYS = datetime.timedelta(minutes=30)
 COOLDOWN_EVERYONE = datetime.timedelta(hours=24)
-COOLDOWN_STEAL = datetime.timedelta(hours=3)
+COOLDOWN_STEAL = datetime.timedelta(hours=6)
 
-TIME_GUARDS = datetime.timedelta(minutes=15)
+TIME_PERFECT_GUARDS = datetime.timedelta(minutes=5)
+TIME_IMPERFECT_GUARD = datetime.timedelta(minutes=10)
 
 AMS_OFFSET = datetime.timedelta(hours=2) # fucking daylight savings
 # I KNOW THERES A BETTER WAY TO DO THIS IM JUST TOO LAZY
@@ -808,7 +809,7 @@ rolling a 1 or 100 are always crit fail or success
         if not redeemable:
             now = datetime.datetime.now(datetime.timezone.utc)
             delta_time = (tim + COOLDOWN_STEAL) - now
-            await ctx.send(f'Only 1 theft per 3 hrs sorrgy (cd: {delta_time.seconds//3600} hour(s) {(delta_time.seconds%3600)//60} minute(s))')
+            await ctx.send(f'Only 1 theft per 6 hrs sorrgy (cd: {delta_time.seconds//3600} hour(s) {(delta_time.seconds%3600)//60} minute(s))')
             return
         victim_wealth = dm.get_money(victim.id)
         roll = random.randint(1,100)
@@ -855,18 +856,25 @@ async def guards(ctx: commands.Context, *args):
         for perp_id in steals.keys():
             time, amount = steals[perp_id]
             now = datetime.datetime.now(datetime.timezone.utc)
-            if time + TIME_GUARDS > now:
+            if time + TIME_PERFECT_GUARDS + TIME_IMPERFECT_GUARD > now:
                 if not happens:
                     await ctx.send("STOP! You violated the law >:(")
+                timedelta = time + TIME_PERFECT_GUARDS - now
+                timedelta = timedelta.total_seconds()
                 await punish(perp_id, ctx.channel, reason="Zwieber, niet stelen!")
-                recovered += amount // 2
-                dm.add_money(ctx.author.id, amount//2)
-                dm.add_money(perp_id, -1*amount//2)
+                if timedelta > 0:
+                    await ctx.send("Perfect Parry!!")
+                    recovered += amount
+                else:
+                    mult = 1 + (timedelta / TIME_IMPERFECT_GUARD.total_seconds())
+                    recovered += max(round(amount*mult),1)
                 happens = True
         dm.clear_steals(ctx.author.id)
     if not happens:
         await ctx.send('We couldnt find anything sire...')
     else:
+        dm.add_money(ctx.author.id, recovered)
+        dm.add_money(perp_id, -1*recovered)
         await ctx.send(f'Recovered: {recovered}')
 
 
