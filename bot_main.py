@@ -964,7 +964,7 @@ async def kys(ctx: commands.Context, *args):
 # Run the client
 if __name__ == "__main__":
     if TEST_MODE:
-        client.run(TOKEN, log_handler=handler, log_level=logging.DEBUG)
+        client.run(TOKEN)
     else:
         client.run(TOKEN, log_handler=handler, log_level=logging.INFO)
 

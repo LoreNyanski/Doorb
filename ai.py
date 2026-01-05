@@ -10,6 +10,9 @@ client = OpenAI(api_key=OPEN_AI_TOKEN)
 
 
 punishments = {
+
+                #Bizarro - opposite world
+
                 'Uwutalk': '''Uwutalk
 - Replaces all r and l with w sounds.
 - Uses a cutesy, affectionate, playful tone.
