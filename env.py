@@ -2,7 +2,7 @@ import os
 from dotenv import load_dotenv
 
 
-TEST_MODE = True
+TEST_MODE = False
 
 
 load_dotenv()
