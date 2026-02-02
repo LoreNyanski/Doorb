@@ -7,11 +7,11 @@
 # run the bot
 
 # ----- vars ----
-SCRIPT_DIR = "$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-SCRIPT_MAIN = "bot_main.py"
-SCRIPT_VENV = ".venv"
-LOG_FILE = app.log
-PID_FILE = app.pid
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_MAIN="bot_main.py"
+SCRIPT_VENV=".venv"
+LOG_FILE="app.log"
+PID_FILE="app.pid"
 
 cd "$SCRIPT_DIR"
 
@@ -26,7 +26,7 @@ fi
 
 # ----- pull from github -----
 git fetch origin
-git reset --hard origin/main
+git reset --hard -- origin/master
 
 # ----- updating requirements -----
 "$SCRIPT_VENV/bin/pip" install -r requirements.txt
