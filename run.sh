@@ -17,7 +17,7 @@ cd "$SCRIPT_DIR"
 
 # ----- find & kill process -----
 if [[ -f "$PID_FILE" ]]; then
-    OLD_PID = "$(cat "$PID_FILE")"
+    OLD_PID="$(cat "$PID_FILE")"
     if kill -0 "$OLD_PID" 2>/dev/null; then
         kill "$OLD_PID" 
         sleep 2
@@ -26,7 +26,8 @@ fi
 
 # ----- pull from github -----
 git fetch origin
-git reset --hard -- origin/master
+git reset --hard origin/master
+git clean -fd
 
 # ----- updating requirements -----
 "$SCRIPT_VENV/bin/pip" install -r requirements.txt
