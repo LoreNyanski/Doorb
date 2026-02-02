@@ -3,7 +3,6 @@
 # interrupt terminal - ctrl + c
 
 # bot.py
-import os
 import re
 import discord
 import random
@@ -17,20 +16,7 @@ import discord.ext
 import discord.ext.commands
 from door_manager import Door_manager
 from ai import *
-from dotenv import load_dotenv
-# from games import
-
-load_dotenv()
-TEST_MODE = True
-
-TOKEN = os.getenv('DISCORD_TOKEN')
-shibe = os.getenv('shibe')
-me = os.getenv('me')
-
-test_guild = os.getenv('test_guild')
-main_guild = os.getenv('main_guild')
-tracked_sticker = os.getenv('tracked_sticker')
-test_sticker = os.getenv('test_sticker')
+from env import DISCORD_TOKEN, TEST_MODE, sticker, guild, shibe, lore
 
 # TODO: proper intents my guy
 intents = discord.Intents.all()
@@ -79,12 +65,8 @@ client.insults = ['Idiot', 'Dumbass', 'Stupid', 'Unintelligent', 'Fool', 'Moron'
                   'Knobhead', 'Hingedly-impaired', 'Architectually challenged', 'Ill-advised', 'Imbecile', 'Dim', 'Unthinking',
                   'Half-witted', 'Low intelligence specimen'] # particularly fond of Architectually challenged
 
-client.active_sticker = int(tracked_sticker)
-client.active_guild = int(main_guild)
-
-if TEST_MODE:
-    client.active_sticker = int(test_sticker)
-    client.active_guild = int(test_guild)
+client.active_sticker = sticker
+client.active_guild = guild
 
 # -----------------------------------------------------------------------------------------
 #                                    Functions
@@ -597,7 +579,7 @@ Things (the cost is in {{}}):
                     await ctx.send('cashless behaviour')
                     return
                 dm.add_money(ctx.author.id, -1*COST_COOKIE)
-                await ctx.send(f'<@{me}> cookie has been redeemed')
+                await ctx.send(f'<@{lore}> cookie has been redeemed')
             case _:
                 await ctx.send('nah')
                 return
@@ -964,9 +946,9 @@ async def kys(ctx: commands.Context, *args):
 # Run the client
 if __name__ == "__main__":
     if TEST_MODE:
-        client.run(TOKEN)
+        client.run(DISCORD_TOKEN)
     else:
-        client.run(TOKEN, log_handler=handler, log_level=logging.INFO)
+        client.run(DISCORD_TOKEN, log_handler=handler, log_level=logging.INFO)
 
 
 
