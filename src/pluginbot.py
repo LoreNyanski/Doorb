@@ -3,6 +3,7 @@ import inspect
 import os
 import importlib
 from discord.ext.commands import Bot
+import discord
 
 import src.plugins
 
@@ -10,23 +11,36 @@ logger = logging.getLogger(__name__)
 
 plugins_path = src.plugins.__path__[0]
 
-setups = []
+setup_handlers = []
+on_message_handlers = []
 
 class PluginBot(Bot):
-    """A discord bot that executes all functions registered with the @on_startup() decorator before it launches"""
+    """A discord bot that executes all functions registered with the @setup_handler() decorator before it launches"""
 
     async def setup_hook(self):
+        # sort setups
         ordered = sorted(
-            setups,
-            key=lambda x: x["priority"]
-        )
-
+            setup_handlers,
+            key=lambda x: x["priority"])
+        
+        # call all setups
         for item in ordered:
             fn = item["fn"]
             logger.debug(f"Awaiting function: {fn.__name__}...")
             await fn(self)
 
-def on_startup(*, priority=0):
+    async def on_message(self, message: discord.Message):
+        # dont respond to yourself dumbass
+        if message.author == self.user: return
+
+        # process commands
+        await self.process_commands(message)
+
+        # call all message handlers
+        for handler in on_message_handlers:
+            await handler(message)
+
+def setup_handler(*, priority=0):
     """
     Decorator that marks this function to be executed once upon startup of the bot.
     The decorated function must be async and has to take a discord bot as an argument 
@@ -36,15 +50,30 @@ def on_startup(*, priority=0):
     """
     def decorator(fn):
         if not inspect.iscoroutinefunction(fn):
-            raise TypeError("@on_startup functions must be async")
+            raise TypeError("@setup_handler functions must be async")
         
-        setups.append({
+        setup_handlers.append({
             "fn": fn,
             "priority": priority,
         })
         logger.debug(f"Registered function: {fn.__name__}")
         return fn
     return decorator
+
+def on_message_handler():
+    """
+    Decorator that marks this function to be executed once upon message.
+    The decorated function must be async
+    """
+    def wrapper(func):
+        if not inspect.iscoroutinefunction(func):
+            raise TypeError("@setup_handler functions must be async")
+        
+        on_message_handlers.append(func)
+        return func
+    return wrapper
+
+
 
 def import_plugins():
     with os.scandir(plugins_path) as mods:

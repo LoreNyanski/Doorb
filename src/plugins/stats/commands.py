@@ -1,7 +1,5 @@
 from discord.ext.commands import Context, Bot
-from pluginbot import on_startup
-from dataclasses import dataclass
-from typing import Literal
+from pluginbot import setup_handler
 
 from .stats_strategy import get_stat_item
 from .stats_fetcher import fetch_leaderboard, fetch_stats
@@ -9,7 +7,7 @@ from .stats_renderer import render_leaderboard, render_stats
 
 DEFAULT_LEADERBOARD = "count"
 
-@on_startup()
+@setup_handler()
 async def setup_commands(client: Bot):
 
     async def get_member(dumbass_id: int) -> str:

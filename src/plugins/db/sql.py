@@ -1,7 +1,7 @@
 import sqlite3
 import asyncio
 from discord.ext.commands import Bot
-from src.pluginbot import on_startup
+from src.pluginbot import setup_handler
 
 DB_PATH = "bot.db"
 
@@ -38,7 +38,7 @@ async def execute_query(query, params=()):
     await db_queue.put((query, params, future))
     return await future
 
-@on_startup()
+@setup_handler()
 async def start_worker(bot: Bot):
     global worker
     worker = bot.loop.create_task(db_worker())
