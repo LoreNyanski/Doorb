@@ -1,5 +1,6 @@
 from discord.ext.commands import Context, Bot
-from pluginbot import setup_handler
+
+from src.pluginbot import setup_handler
 
 from .stats_strategy import get_stat_item
 from .stats_fetcher import fetch_leaderboard, fetch_stats

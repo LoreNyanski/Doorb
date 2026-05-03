@@ -1,7 +1,8 @@
 from typing import Any
 from enum import Enum
+
 from .settings_schema import settings_registry
-from .db_interface import read_guild_settings, read_dumbass_settings, write_dumbass_settings, write_guild_settings
+from .interface_db import read_guild_settings, read_dumbass_settings, write_dumbass_settings, write_guild_settings
 
 class Scope(Enum):
     GUILD = 0

@@ -1,5 +1,7 @@
-from .stats_fetcher import StatResult, LeaderboardResult
 import asyncio
+
+from .stats_fetcher import StatResult, LeaderboardResult
+
 
 async def render_leaderboard(entries: LeaderboardResult, get_user):
     return await leaderboard_plaintext(entries, get_user) # TODO replace later with embed

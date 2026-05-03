@@ -1,6 +1,7 @@
 import sqlite3
 import asyncio
 from discord.ext.commands import Bot
+
 from src.pluginbot import setup_handler
 
 DB_PATH = "bot.db"
