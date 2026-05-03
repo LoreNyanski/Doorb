@@ -24,8 +24,8 @@ async def setup_commands(client: Bot):
                 subject = ctx.author.name
             case 1:
                 arg = args[0]
-                if arg == "server":
-                    # LIST ALL STATS FOR ONE SERVER
+                if arg == "server" or arg == "guild":
+                    # LIST ALL STATS FOR ONE GUILD
                     entries = await fetch_stats([user.id for user in ctx.guild.members])
                     subject = ctx.guild.name
                 elif ctx.message.mentions:
