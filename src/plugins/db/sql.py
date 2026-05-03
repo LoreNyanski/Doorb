@@ -17,9 +17,9 @@ conn.execute("PRAGMA busy_timeout=5000;")
 
 async def db_worker():
     while True:
-        query, params, future = await db_queue.get()
+        query, params, future, many = await db_queue.get()
         try:
-            cursor = conn.execute(query, params)
+            cursor = conn.executemany(query, params) if many else conn.execute(query, params)
             conn.commit()
             if query.strip().upper().startswith("SELECT"):
                 result = cursor.fetchall()
@@ -32,10 +32,10 @@ async def db_worker():
 
         db_queue.task_done()
 
-async def execute_query(query, params=()):
+async def execute_query(query, params=(), many: bool=False):
     loop = asyncio.get_running_loop()
     future = loop.create_future()
-    await db_queue.put((query, params, future))
+    await db_queue.put((query, params, future, many))
     return await future
 
 @setup_handler()
