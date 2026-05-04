@@ -19,10 +19,13 @@ async def incident_handler(message: Message):
 
     last_incident = await get_last_guild_incident([dumbass.id for dumbass in message.guild.members])
     current_incident = Incident(message.author.id, message.created_at)
-    current_incident.save()
-    interval = current_incident - last_incident
+    await current_incident.save()
 
-    response = random.choice(INSULTS) + '\nYou ruined a ' + format_timedelta(interval.length) + ' long streak >:('
+    if last_incident:
+        interval = current_incident - last_incident
+        response = random.choice(INSULTS) + '\nYou ruined a ' + format_timedelta(interval.length) + ' long collective streak >:('
+    else:
+        response = random.choice(INSULTS) + '\nCongrats! You are the first dumbass of the guild'
     await message.reply(response)
 
 async def get_last_guild_incident(dumbass_ids: list[int]) -> Incident:
