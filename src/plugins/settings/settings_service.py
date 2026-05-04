@@ -56,7 +56,7 @@ async def set_settings(scope: Scope, subject_id: int, values: dict[str, Any]):
     setter = write_guild_settings if scope == Scope.GUILD else write_dumbass_settings 
     # this is fine for now. if it needs to be extended later use a dict or something.
 
-    serialized: dict[str, Any] = {}
+    serialized: dict[str, str] = {}
     for key, value in values.items():
         setting = settings_registry[key]
         serialized[key] = setting.serializer(value)

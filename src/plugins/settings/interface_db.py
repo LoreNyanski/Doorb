@@ -71,7 +71,7 @@ async def read_dumbass_settings(dumbass_id: int, keys: list[str]):
     params = (dumbass_id, *keys)
     return await db.execute_query(query, params) or []
 
-async def write_guild_settings(guild_id: int, values: dict[str, Any]):
+async def write_guild_settings(guild_id: int, values: dict[str, str]):
     if not values:
         return
 
@@ -82,10 +82,10 @@ async def write_guild_settings(guild_id: int, values: dict[str, Any]):
         DO UPDATE SET {COL_VALUE} = excluded.{COL_VALUE}
     """
 
-    params = [(guild_id, key, str(value)) for key, value in values.items()]
+    params = [(guild_id, key, value) for key, value in values.items()]
     await db.execute_query(query, params, many=True)
 
-async def write_dumbass_settings(dumbass_id: int, values: dict[str, Any]):
+async def write_dumbass_settings(dumbass_id: int, values: dict[str, str]):
     if not values:
         return
 
@@ -96,5 +96,5 @@ async def write_dumbass_settings(dumbass_id: int, values: dict[str, Any]):
         DO UPDATE SET {COL_VALUE} = excluded.{COL_VALUE}
     """
 
-    params = [(dumbass_id, key, str(value)) for key, value in values.items()]
+    params = [(dumbass_id, key, value) for key, value in values.items()]
     await db.execute_query(query, params, many=True)
