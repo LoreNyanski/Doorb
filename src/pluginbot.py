@@ -7,6 +7,8 @@ import discord
 
 import src.plugins
 
+from .env import TEST_GUILD_ID, TEST_MODE
+
 logger = logging.getLogger(__name__)
 
 plugins_path = src.plugins.__path__[0]
@@ -32,6 +34,7 @@ class PluginBot(Bot):
     async def on_message(self, message: discord.Message):
         # dont respond to yourself dumbass
         if message.author == self.user: return
+        if guild_guard(message.guild.id): return
 
         # process commands
         await self.process_commands(message)
@@ -39,6 +42,16 @@ class PluginBot(Bot):
         # call all message handlers
         for handler in on_message_handlers:
             await handler(message)
+
+
+## DONT FORGE TO ADD THIS TO THE FRONT OF EVERY SINGLE HANDLER
+def guild_guard(guild_id: int):
+    """Returns true if the event should not be processed according to test mode. 
+    (If test mode is on, only run in the test guild, otherwise run everywhere else)
+    """
+    logger.debug(f"Comparing guild: {guild_id} to TEST_GUILD: {TEST_GUILD_ID}...")
+    if TEST_MODE != (guild_id == TEST_GUILD_ID): return True
+    else: return False
 
 def setup_handler(*, priority=0):
     """
@@ -72,8 +85,6 @@ def on_message_handler():
         on_message_handlers.append(func)
         return func
     return wrapper
-
-
 
 def import_plugins():
     with os.scandir(plugins_path) as mods:
