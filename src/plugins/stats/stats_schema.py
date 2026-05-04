@@ -1,10 +1,6 @@
 from typing import TypeVar, Generic, Any
 from abc import ABC, abstractmethod
 
-T_Entry = TypeVar('E')
-T_Context = TypeVar('C', bound=StatContext)
-T_Value = TypeVar('V')
-
 stats_registry: list[StatGroup] = []
 
 def register_stat_group(group: StatGroup):
@@ -13,6 +9,10 @@ def register_stat_group(group: StatGroup):
 class StatContext:
     """Derived, computation-ready view over a list of entries."""
     ...
+
+T_Entry = TypeVar('E')
+T_Context = TypeVar('C', bound=StatContext)
+T_Value = TypeVar('V')
 
 class StatGroup(ABC, Generic[T_Entry, T_Context]):
     """A group of statistics to be displayed together by the !stats command and how to get the relevant data from the db."""
