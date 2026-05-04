@@ -11,7 +11,7 @@ from .interface_db import read_all_incidents
 from .incident_schema import Incident, IncidentInterval
 
 @setup_handler()
-async def setup_incident_stat_group():
+async def setup_incident_stat_group(client):
     group = IncidentGroup("incident_stats", "Incidents")
     
     group.add_item(StatCount("count", "Total incidents"))
@@ -25,6 +25,8 @@ async def setup_incident_stat_group():
 
     register_stat_group(group)
 
+
+
 @dataclass
 class IncidentStatContext(StatContext):
     """A sorted list of incidents and the intervals between them"""
@@ -32,12 +34,11 @@ class IncidentStatContext(StatContext):
     intervals: list[IncidentInterval]
 
 class IncidentGroup(StatGroup[Incident, IncidentStatContext]):
-    def __init__(self, name, display_label, items = None):
-        super().__init__(name, display_label, items)
+    def __init__(self, name, display_label):
+        super().__init__(name, display_label)
 
     async def fetch_data(self, dumbass_ids):
         rows = await read_all_incidents(dumbass_ids)
-        rows = rows or []
         incidents = [Incident.parser(row) for row in rows]
         return incidents
 
@@ -48,7 +49,7 @@ class IncidentGroup(StatGroup[Incident, IncidentStatContext]):
         return result
     
     def build_context(self, entries):
-        sorted_entries = sorted(entries, key=lambda x: x.occurance)
+        sorted_entries = sorted(entries, key=lambda x: x.occurrence)
         return IncidentStatContext(
             incidents=sorted_entries,
             intervals= [sorted_entries[i] - sorted_entries[i-1] for i in range(1, len(sorted_entries))]
@@ -121,7 +122,7 @@ class StatLast(StatItem[IncidentStatContext, timedelta]):
         super().__init__(name, display_label, leaderboard_descending)
     
     def compute(self, context):
-        return datetime.now(tz=timezone.utc) - context.incidents[-1].occurance
+        return datetime.now(tz=timezone.utc) - context.incidents[-1].occurrence
     
     def format(self, value):
         return format_timedelta(value)
@@ -138,7 +139,7 @@ class StatBusiestDay(StatItem[IncidentStatContext, int]):
         window: list[Incident] = [context.incidents[0]]
         for incident in context.incidents[1:]: 
             window.append(incident)
-            delta = incident.occurance - window[0].occurance
+            delta = incident.occurrence - window[0].occurrence
             if delta > timedelta(days=1): window.remove(window[0])
         return len(window)
     
@@ -155,7 +156,7 @@ class StatPrimeHour(StatItem[IncidentStatContext, time]):
         if len(context.incidents) == 0: return time()
         buckets = [0] * 24
         for inc in context.incidents:
-            i = utc_to_ams(inc.occurance).hour
+            i = utc_to_ams(inc.occurrence).hour
             buckets[i] += 1
         prime_hour = max(range(24), key=lambda x: buckets[x])
         return time(hour=prime_hour)

@@ -4,7 +4,7 @@ from src.pluginbot import setup_handler
 DEFAULT_STICKER = 1305957931304615997
 
 @setup_handler()
-async def setup_settings():
+async def setup_settings(client):
     sticker_setting = Setting(
         key="tracked_sticker",
         default=DEFAULT_STICKER,

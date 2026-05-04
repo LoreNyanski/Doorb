@@ -12,10 +12,10 @@ INSULTS = ['Idiot', 'Dumbass', 'Stupid', 'Unintelligent', 'Fool', 'Moron', 'Dumm
             'Knobhead', 'Hingedly-impaired', 'Architectually challenged', 'Ill-advised', 'Imbecile', 'Dim', 'Unthinking',
             'Half-witted', 'Low intelligence specimen'] # particularly fond of Architectually challenged
 
-@on_message_handler
+@on_message_handler()
 async def incident_handler(message: Message):
     if not message.stickers: return
-    if not sticker_check(message.guild.id, message.stickers[0].id): return
+    if not await sticker_check(message.guild.id, message.stickers[0].id): return
 
     last_incident = await get_last_guild_incident([dumbass.id for dumbass in message.guild.members])
     current_incident = Incident(message.author.id, message.created_at)
