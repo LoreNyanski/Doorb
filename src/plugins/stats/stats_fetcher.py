@@ -39,10 +39,11 @@ async def fetch_stats(dumbass_ids: list[int]) -> StatResult:
     groups = []
     for group in stats_registry:
         data_entries = await group.fetch_data(dumbass_ids)
+        context = group.build_context(data_entries)
         items = []
-        for item in group.items:
+        for item in group:
             try:
-                value = item.compute(data_entries)
+                value = item.compute(context)
                 formatted = item.format(value)
             except Exception as e:
                 value = None
@@ -61,7 +62,8 @@ async def fetch_leaderboard(dumbass_ids: list[int], stat: StatItem) -> Leaderboa
     for dumbass_id in dumbass_ids:
         try:
             user_entries = entries_dict.get(dumbass_id, [])
-            value = stat.compute(user_entries)
+            context = group.build_context(user_entries)
+            value = stat.compute(context)
             formatted = stat.format(value)
         except Exception as e:
             value = None

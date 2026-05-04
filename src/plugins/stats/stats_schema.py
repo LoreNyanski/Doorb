@@ -20,7 +20,7 @@ class StatGroup(ABC, Generic[T_Entry, T_Context]):
     def __init__(self, name: str, display_label: str):
         self.name = name
         self.display_label = display_label
-        self._items = []
+        self.items: list[StatItem] = []
 
     @abstractmethod
     async def fetch_data(self, dumbass_ids: list[int]) -> list[T_Entry]:
@@ -38,11 +38,11 @@ class StatGroup(ABC, Generic[T_Entry, T_Context]):
         ...
 
     def add_item(self, item: StatItem[T_Context, Any]):
-        self._items.append(item)
+        self.items.append(item)
         item.parent_group = self
     
     def __iter__(self):
-        return iter(self._items)
+        return iter(self.items)
 
 class StatItem(ABC, Generic[T_Context, T_Value]):
     """A single statistic to be displayed by the !stats command and how to calculate it."""
@@ -54,11 +54,13 @@ class StatItem(ABC, Generic[T_Context, T_Value]):
         self.leaderboard_descending: bool = leaderboard_descending
 
     @abstractmethod
-    def compute(self, data: list[T_Context]) -> T_Value:
+    def compute(self, context: T_Context) -> T_Value:
+        """Computes a value out of the context object"""
         ...
     
     @abstractmethod
     def format(self, value: T_Value) -> str:
+        """Turns the value into a displayable string"""
         ...
 
 def get_stat_item(stat_name: str) -> StatItem:
