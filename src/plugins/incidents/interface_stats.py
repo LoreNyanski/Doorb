@@ -15,13 +15,13 @@ async def setup_incident_stat_group(client):
     group = IncidentGroup("incident_stats", "Incidents")
     
     group.add_item(StatCount("count", "Total incidents"))
-    group.add_item(StatMean("mean", "Avg time between", False))
-    group.add_item(StatMedian("median", "Med time between", False))
-    group.add_item(StatMax("max", "Longest streak"))
-    group.add_item(StatMin("min", "Shortest streak", False))
     group.add_item(StatBusiestDay("busiest_day", "Most in 24 hours"))
     group.add_item(StatPrimeHour("prime_hour", "Unluckiest hour"))
     group.add_item(StatLast("last", "Current streak"))
+    group.add_item(StatMean("mean", "Avg streak", False))
+    group.add_item(StatMedian("median", "Med streak", False))
+    group.add_item(StatMax("max", "Longest streak"))
+    group.add_item(StatMin("min", "Shortest streak", False))
 
     register_stat_group(group)
 
@@ -65,7 +65,7 @@ class StatCount(StatItem[IncidentStatContext, int]):
         return len(context.incidents)
     
     def format(self, value):
-        return f"{value} "
+        return f"{value}"
 
 class StatMean(StatItem[IncidentStatContext, timedelta]):
     """Returns the mean length between the incidents."""
@@ -74,7 +74,7 @@ class StatMean(StatItem[IncidentStatContext, timedelta]):
         super().__init__(name, display_label, leaderboard_descending)
 
     def compute(self, context):
-        return mean([interval.length for interval in context.intervals])
+        return timedelta(seconds=sum([interval.length.total_seconds() for interval in context.intervals]) / len(context.intervals))
 
     def format(self, value):
         return format_timedelta(value)
@@ -144,7 +144,7 @@ class StatBusiestDay(StatItem[IncidentStatContext, int]):
         return len(window)
     
     def format(self, value):
-        return f"{value} "
+        return f"{value}"
 
 class StatPrimeHour(StatItem[IncidentStatContext, time]):
     """Returns the hour of day where the most incidents happened"""
@@ -153,7 +153,7 @@ class StatPrimeHour(StatItem[IncidentStatContext, time]):
         super().__init__(name, display_label, leaderboard_descending)
 
     def compute(self, context):
-        if len(context.incidents) == 0: return time()
+        if len(context.incidents) == 0: return None
         buckets = [0] * 24
         for inc in context.incidents:
             i = utc_to_ams(inc.occurrence).hour
@@ -162,4 +162,4 @@ class StatPrimeHour(StatItem[IncidentStatContext, time]):
         return time(hour=prime_hour)
     
     def format(self, value):
-        return str(value)
+        return value.strftime("%I %p").lstrip("0")
