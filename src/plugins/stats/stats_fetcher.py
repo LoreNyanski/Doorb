@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from typing import Any
 import logging
 
-from .stats_strategy import StatItem, stats_registry
+from .stats_schema import StatItem, stats_registry
 
 logger = logging.getLogger(__name__)
 

@@ -1,42 +1,50 @@
 from typing import TypeVar, Generic, Any
 from abc import ABC, abstractmethod
 
-D = TypeVar('D')
-T = TypeVar('T')
+T_Entry = TypeVar('E')
+T_Context = TypeVar('C', bound=StatContext)
+T_Value = TypeVar('V')
 
 stats_registry: list[StatGroup] = []
 
 def register_stat_group(group: StatGroup):
     stats_registry.append(group)
 
-class StatGroup(ABC, Generic[D]):
+class StatContext:
+    """Derived, computation-ready view over a list of entries."""
+    ...
+
+class StatGroup(ABC, Generic[T_Entry, T_Context]):
     """A group of statistics to be displayed together by the !stats command and how to get the relevant data from the db."""
 
-    def __init__(self, name: str, display_label: str, items: list[StatItem] | None = None):
+    def __init__(self, name: str, display_label: str):
         self.name = name
         self.display_label = display_label
-        self._items = items or []
+        self._items = []
 
     @abstractmethod
-    async def fetch_data(self, dumbass_ids: list[int]) -> list[D]:
+    async def fetch_data(self, dumbass_ids: list[int]) -> list[T_Entry]:
+        """Fetches all relevant db entries and returns them parsed"""
         ...
 
     @abstractmethod
-    def group_by_user(self, data_entries: list[D]) -> dict[int, list[D]]:
+    def group_by_user(self, entries: list[T_Entry]) -> dict[int, list[T_Entry]]:
+        "Partitions all entries per user"
         ...
 
-    @property
-    def items(self) -> list[StatItem[D, Any]]:
-        return self._items.copy()
+    @abstractmethod
+    def build_context(self, entries: list[T_Entry]) -> T_Context:
+        "Converts a partition of entries into a computation context for StatItems"
+        ...
 
-    def add_item(self, item: StatItem[D, Any]):
+    def add_item(self, item: StatItem[T_Context, Any]):
         self._items.append(item)
         item.parent_group = self
     
     def __iter__(self):
         return iter(self._items)
 
-class StatItem(ABC, Generic[D, T]):
+class StatItem(ABC, Generic[T_Context, T_Value]):
     """A single statistic to be displayed by the !stats command and how to calculate it."""
     
     def __init__(self, name: str, display_label: str, leaderboard_descending: bool = True):
@@ -46,11 +54,11 @@ class StatItem(ABC, Generic[D, T]):
         self.leaderboard_descending: bool = leaderboard_descending
 
     @abstractmethod
-    def compute(self, data: list[D]) -> T:
+    def compute(self, data: list[T_Context]) -> T_Value:
         ...
     
     @abstractmethod
-    def format(self, value: T) -> str:
+    def format(self, value: T_Value) -> str:
         ...
 
 def get_stat_item(stat_name: str) -> StatItem:
