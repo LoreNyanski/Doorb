@@ -11,7 +11,7 @@ COL_KEY = "key"
 COL_VALUE = "value"
 
 @setup_handler()
-async def setup_guild_settings_table():
+async def setup_guild_settings_table(client):
     """Ensures that there is an incidents table in the database if there wasn't one already"""
     await db.execute_query(
         f"""
@@ -25,7 +25,7 @@ async def setup_guild_settings_table():
     )
 
 @setup_handler()
-async def setup_dumbass_settings_table():
+async def setup_dumbass_settings_table(client):
     """Ensures that there is an incidents table in the database if there wasn't one already"""
     await db.execute_query(
         f"""

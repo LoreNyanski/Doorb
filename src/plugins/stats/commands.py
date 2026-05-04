@@ -15,7 +15,7 @@ async def setup_commands(client: Bot):
         user = client.get_user(dumbass_id)
         return user.name if user else f"User {dumbass_id}"
 
-    @client.command
+    @client.command()
     async def stats(ctx: Context, *args):
         """Lists all statistics for a set of people"""
         match len(args):
@@ -33,13 +33,16 @@ async def setup_commands(client: Bot):
                     # LIST ALL STATS FOR MENTIONED PERSONS
                     entries = await fetch_stats([ctx.message.mentions[0].id])
                     subject = ctx.message.mentions[0].name
+                else:
+                    await ctx.send('Incorrect arguments loser (either tag someone or "server")')
+                    return
             case _:
                 await ctx.send("Too many arguments bub")
                 return
         result = await render_stats(entries, subject)
         await ctx.reply(content=result)
 
-    @client.command
+    @client.command()
     async def leaderboard(ctx: Context, *args):
         """Lists a ranking of all people for a specific statistic"""
         match len(args):
