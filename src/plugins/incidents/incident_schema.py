@@ -16,10 +16,10 @@ class Incident:
         occurrence = datetime.fromisoformat(occurrence)
         return Incident(dumbass_id, occurrence)
 
-    def save(self):
+    async def save(self):
         """Saves the incident to the database"""
         ser_occurrence = self.occurrence.isoformat()
-        add_incident(self.dumbass_id, ser_occurrence)
+        await add_incident(self.dumbass_id, ser_occurrence)
 
     def __sub__(self, other):
         if not isinstance(other, Incident):
