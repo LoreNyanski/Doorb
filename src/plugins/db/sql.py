@@ -3,8 +3,9 @@ import asyncio
 from discord.ext.commands import Bot
 
 from src.pluginbot import setup_handler
+from src.env import TEST_MODE
 
-DB_PATH = "bot.db"
+DB_PATH = "test.db" if TEST_MODE else "bot.db"
 
 db_queue = asyncio.Queue()
 worker = None

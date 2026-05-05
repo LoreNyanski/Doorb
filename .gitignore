@@ -4,4 +4,4 @@ discord.log
 csv
 __pycache__
 Doore_docs
-bot.db*
+*.db*
