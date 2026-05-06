@@ -1,6 +1,7 @@
 import sqlite3
 import asyncio
 from discord.ext.commands import Bot
+from typing import Iterable
 
 from src.pluginbot import setup_handler
 from src.env import TEST_MODE
@@ -34,7 +35,7 @@ async def db_worker():
 
         db_queue.task_done()
 
-async def execute_query(query, params=(), many: bool=False):
+async def execute_query(query: str, params: Iterable=(), many: bool=False):
     loop = asyncio.get_running_loop()
     future = loop.create_future()
     await db_queue.put((query, params, future, many))
