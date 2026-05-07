@@ -28,13 +28,13 @@ async def setup_accounts_table(client):
 
 @setup_handler()
 async def setup_transactions_table(client):
-    """Ensures that there is an transations table in the database if there wasn't one already"""
+    """Ensures that there is an transactions table in the database if there wasn't one already"""
     await db.execute_query(
         f"""
         CREATE TABLE IF NOT EXISTS {TABLE_TRANSACTIONS} (
             {COL_TRANSACTION_ID} INTEGER PRIMARY KEY AUTOINCREMENT,
-            {COL_SENDER_ID} INTEGER NOT NULL,
-            {COL_RECIPIENT_ID} INTEGER NOT NULL,
+            FOREIGN KEY ({COL_SENDER_ID}) REFERENCES {TABLE_ACCOUNTS}({COL_DUMBASS_ID}),
+            FOREIGN KEY ({COL_RECIPIENT_ID}) REFERENCES {TABLE_ACCOUNTS}({COL_DUMBASS_ID})
             {COL_AMOUNT} INTEGER NOT NULL
         );
         """
@@ -47,30 +47,45 @@ async def read_account(dumbass_id: int):
         WHERE {COL_DUMBASS_ID} = ?
     """
 
-    await db.execute_query(query, (dumbass_id))
+    return await db.execute_query(query, (dumbass_id))
 
-async def write_transaction(sender_id: int, recipient_id: int, amount: int) -> str:
+async def write_transaction(sender_id: int, recipient_id: int, amount: int):
     query = f"""
         INSERT INTO {TABLE_TRANSACTIONS} ({COL_SENDER_ID}, {COL_RECIPIENT_ID}, {COL_AMOUNT}) 
         VALUES (?, ?, ?)
     """
 
     await db.execute_query(query, (sender_id, recipient_id, amount))
-    
-async def write_change_balance(dumbass_id: int, amount: int) -> str:
+
+async def write_account(dumbass_id: int, balance: int, last_daily: str):
     query = f"""
-        UPDATE {TABLE_ACCOUNTS}
-        SET {COL_BALANCE} = {COL_BALANCE} + ?
-        WHERE {COL_DUMBASS_ID} = ?
+        INSERT INTO {TABLE_ACCOUNTS}
+        VALUES (?, ?, ?)
+        ON CONFLICT ({COL_DUMBASS_ID})
+        DO UPDATE SET 
+            {COL_BALANCE} = excluded.{COL_BALANCE}, 
+            {COL_LAST_DAILY} = excluded.{COL_LAST_DAILY}
     """
 
-    await db.execute_query(query, (amount, dumbass_id))
+    await db.execute_query(query, (dumbass_id, balance, last_daily))
 
-async def write_update_last_daily(dumbass_id: int, new_daily: str) -> str:
-    query = f"""
-        UPDATE {TABLE_ACCOUNTS}
-        SET {COL_LAST_DAILY} = ?
-        WHERE {COL_DUMBASS_ID} = ?
-    """
 
-    await db.execute_query(query, (new_daily, dumbass_id))
+## UNCOMMENT THIS IF YOU EVER START WORRYING ABOUT RACE CONDITIONS
+## THEN KILL SELF BECAUSE RACE CONDITIONS ARE A BITCH TO DEAL WITH
+# async def write_change_balance(dumbass_id: int, amount: int):
+#     query = f"""
+#         UPDATE {TABLE_ACCOUNTS}
+#         SET {COL_BALANCE} = {COL_BALANCE} + ?
+#         WHERE {COL_DUMBASS_ID} = ?
+#     """
+
+#     await db.execute_query(query, (amount, dumbass_id))
+
+# async def write_update_last_daily(dumbass_id: int, new_daily: str):
+#     query = f"""
+#         UPDATE {TABLE_ACCOUNTS}
+#         SET {COL_LAST_DAILY} = ?
+#         WHERE {COL_DUMBASS_ID} = ?
+#     """
+
+#     await db.execute_query(query, (new_daily, dumbass_id))
