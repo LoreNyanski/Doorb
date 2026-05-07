@@ -3,7 +3,7 @@ import asyncio
 from discord.ext.commands import Bot
 from typing import Iterable
 
-from src.pluginbot import setup_handler
+from src.pluginbot import sig_setup
 from src.env import TEST_MODE
 
 DB_PATH = "test.db" if TEST_MODE else "bot.db"
@@ -41,7 +41,7 @@ async def execute_query(query: str, params: Iterable=(), many: bool=False):
     await db_queue.put((query, params, future, many))
     return await future
 
-@setup_handler()
+@sig_setup.connect
 async def start_worker(bot: Bot):
     global worker
     worker = bot.loop.create_task(db_worker())

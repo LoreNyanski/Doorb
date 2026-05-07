@@ -4,13 +4,13 @@ from collections import defaultdict
 from dataclasses import dataclass
 
 from src.utils import format_timedelta, utc_to_ams
-from src.pluginbot import setup_handler
+from src.pluginbot import sig_setup
 from src.plugins.stats import StatGroup, StatItem, StatContext, register_stat_group
 
 from .interface_db import read_all_incidents
 from .incident_schema import Incident, IncidentInterval
 
-@setup_handler()
+@sig_setup.connect
 async def setup_incident_stat_group(client):
     group = IncidentGroup("incident_stats", "Incidents")
     

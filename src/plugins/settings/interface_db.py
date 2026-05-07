@@ -1,7 +1,7 @@
 from typing import Any
 
 import src.plugins.db as db
-from src.pluginbot import setup_handler
+from src.pluginbot import sig_setup
 
 TABLE_GUILD_SETTINGS = "guild_settings"
 TABLE_DUMBASS_SETTINGS = "dumbass_settings"
@@ -10,7 +10,7 @@ COL_DUMBASS_ID = "dumbass_id"
 COL_KEY = "key"
 COL_VALUE = "value"
 
-@setup_handler()
+@sig_setup.connect
 async def setup_guild_settings_table(client):
     """Ensures that there is an incidents table in the database if there wasn't one already"""
     await db.execute_query(
@@ -24,7 +24,7 @@ async def setup_guild_settings_table(client):
         """
     )
 
-@setup_handler()
+@sig_setup.connect
 async def setup_dumbass_settings_table(client):
     """Ensures that there is an incidents table in the database if there wasn't one already"""
     await db.execute_query(

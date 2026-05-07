@@ -1,5 +1,5 @@
 import src.plugins.db as db
-from src.pluginbot import setup_handler
+from src.pluginbot import sig_setup
 
 TABLE_INCIDENTS = "incidents"
 
@@ -7,7 +7,7 @@ COL_INCIDENT_ID = "incident_id"
 COL_DUMBASS_ID = "dumbass_id"
 COL_OCCURRENCE = "occurrence"
 
-@setup_handler()
+@sig_setup.connect
 async def setup_incidents_table(client):
     """Ensures that there is an incidents table in the database if there wasn't one already"""
     await db.execute_query(

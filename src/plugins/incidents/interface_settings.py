@@ -1,9 +1,9 @@
 from src.plugins.settings import Setting, register_setting, get_setting, Scope
-from src.pluginbot import setup_handler
+from src.pluginbot import sig_setup
 
 DEFAULT_STICKER = 1305957931304615997
 
-@setup_handler()
+@sig_setup.connect
 async def setup_settings(client):
     sticker_setting = Setting(
         key="tracked_sticker",

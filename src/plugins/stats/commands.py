@@ -1,6 +1,6 @@
 from discord.ext.commands import Context, Bot
 
-from src.pluginbot import setup_handler
+from src.pluginbot import sig_setup
 
 from .stats_schema import get_stat_item
 from .stats_fetcher import fetch_leaderboard, fetch_stats
@@ -8,7 +8,7 @@ from .stats_renderer import render_leaderboard, render_stats
 
 DEFAULT_LEADERBOARD = "count"
 
-@setup_handler()
+@sig_setup.connect
 async def setup_commands(client: Bot):
 
     async def get_member(dumbass_id: int) -> str:

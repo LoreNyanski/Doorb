@@ -1,7 +1,7 @@
 from discord import Message
 import random
 
-from src.pluginbot import on_message_handler
+from src.pluginbot import sig_on_message
 from src.utils import format_timedelta
 
 from .incident_schema import Incident
@@ -12,7 +12,7 @@ INSULTS = ['Idiot', 'Dumbass', 'Stupid', 'Unintelligent', 'Fool', 'Moron', 'Dumm
             'Knobhead', 'Hingedly-impaired', 'Architectually challenged', 'Ill-advised', 'Imbecile', 'Dim', 'Unthinking',
             'Half-witted', 'Low intelligence specimen'] # particularly fond of Architectually challenged
 
-@on_message_handler()
+@sig_on_message.connect
 async def incident_handler(message: Message):
     if not message.stickers: return
     if not await sticker_check(message.guild.id, message.stickers[0].id): return
