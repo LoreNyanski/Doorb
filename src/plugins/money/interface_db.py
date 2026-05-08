@@ -1,5 +1,5 @@
 import src.plugins.db as db
-from src.pluginbot import setup_handler
+from src.pluginbot import sig_setup
 
 TABLE_ACCOUNTS = "accounts"
 COL_DUMBASS_ID = "dumbass_id"
@@ -12,7 +12,7 @@ COL_SENDER_ID = "sender_id"
 COL_RECIPIENT_ID = "recipient_id"
 COL_AMOUNT = "amount"
 
-@setup_handler()
+@sig_setup.connect
 async def setup_accounts_table(client):
     """Ensures that there is an accounts table in the database if there wasn't one already"""
     await db.execute_query(
@@ -26,7 +26,7 @@ async def setup_accounts_table(client):
         """
     )
 
-@setup_handler()
+@sig_setup.connect
 async def setup_transactions_table(client):
     """Ensures that there is an transactions table in the database if there wasn't one already"""
     await db.execute_query(
@@ -47,17 +47,17 @@ async def read_account(dumbass_id: int):
         WHERE {COL_DUMBASS_ID} = ?
     """
 
-    return await db.execute_query(query, (dumbass_id))
+    return await db.execute_query(query, (dumbass_id)) or []
 
-async def write_transaction(sender_id: int, recipient_id: int, amount: int):
+async def write_transaction(serialized_transation: tuple[int, int, int]):
     query = f"""
         INSERT INTO {TABLE_TRANSACTIONS} ({COL_SENDER_ID}, {COL_RECIPIENT_ID}, {COL_AMOUNT}) 
         VALUES (?, ?, ?)
     """
 
-    await db.execute_query(query, (sender_id, recipient_id, amount))
+    await db.execute_query(query, serialized_transation)
 
-async def write_account(dumbass_id: int, balance: int, last_daily: str):
+async def write_account(serialized_account: tuple[int, int, str]):
     query = f"""
         INSERT INTO {TABLE_ACCOUNTS}
         VALUES (?, ?, ?)
@@ -67,7 +67,7 @@ async def write_account(dumbass_id: int, balance: int, last_daily: str):
             {COL_LAST_DAILY} = excluded.{COL_LAST_DAILY}
     """
 
-    await db.execute_query(query, (dumbass_id, balance, last_daily))
+    await db.execute_query(query, serialized_account)
 
 
 ## UNCOMMENT THIS IF YOU EVER START WORRYING ABOUT RACE CONDITIONS
