@@ -7,6 +7,8 @@ from .interface_db import write_account, read_account
 DEFAULT_BALANCE = 500
 DEFAULT_LAST_DAILY = datetime.min
 
+_account_cache: dict[int, Account] = {}
+
 class Account:
     
     def __init__(self, dumbass_id: int, balance: int = DEFAULT_BALANCE, last_daily: datetime = DEFAULT_LAST_DAILY):
@@ -22,8 +24,13 @@ class Account:
 
     @staticmethod
     async def get_account(dumbass_id: int) -> Account:
-        rows = await read_account(dumbass_id)
-        return Account._parser(rows[0]) if rows else Account(dumbass_id)
+        if dumbass_id in _account_cache:
+            account = _account_cache[dumbass_id]
+        else:
+            rows = await read_account(dumbass_id)
+            account = Account._parser(rows[0]) if rows else Account(dumbass_id)
+            _account_cache[dumbass_id] = account
+        return account
     
     def _serializer(self) -> tuple[int, int, str]:
         serialized_last_daily = self.last_daily.isoformat()
