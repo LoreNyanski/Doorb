@@ -118,8 +118,10 @@ async def do_daily(account: Account, now: datetime) -> tuple[bool, int]:
     return (success, roll)
 
 def time_until_midnight(now: datetime) -> timedelta:
+    amsterdam_now = utc_to_ams(now)
     next_midnight = datetime.combine(
-        now.date() + timedelta(days=1),
-        datetime.min.time()
+        amsterdam_now.date() + timedelta(days=1),
+        datetime.min.time(),
+        amsterdam_now.tzinfo
     )
     return next_midnight - now

@@ -36,12 +36,12 @@ async def setup_commands(client: Bot):
                         await ctx.send('Incorrect arguments loser (either mention someone or "server")')
                         return
                     entries = await fetch_stats([member.id])
-                    subject = ctx.message.mentions[0].name
+                    subject = member.name
             case _:
                 await ctx.send("Too many arguments bub")
                 return
         result = await render_stats(entries, subject)
-        await ctx.reply(content=result)
+        await ctx.send(content=result)
 
     @client.command()
     async def leaderboard(ctx: Context, *args):

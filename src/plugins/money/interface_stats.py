@@ -6,10 +6,10 @@ from src.pluginbot import sig_setup
 from .money_schema import Account
 
 
-sig_setup.connect
+@sig_setup.connect
 async def setup_money_stats(client):
     group = MoneyStatGroup("money_stats", "Money")
-    
+
     group.add_item(StatBalance("balance", "Balance"))
 
 @dataclass
@@ -19,10 +19,10 @@ class MoneyStatContext(StatContext):
 class MoneyStatGroup(StatGroup):
 
     async def fetch_data(self, dumbass_ids) -> list[Account]:
-        return [Account.get_account(dumbass_id) for dumbass_id in dumbass_ids]
+        return [await Account.get_account(dumbass_id) for dumbass_id in dumbass_ids]
     
     def group_by_user(self, entries: list[Account]) -> dict[int, Account]:
-        return {account.dumbass_id : account for account in entries}
+        return {account.dumbass_id : [account] for account in entries}
     
     def build_context(self, entries):
         return MoneyStatContext(entries)

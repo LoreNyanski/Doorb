@@ -6,7 +6,7 @@ from src.signal import Signal
 from .renderer import render_rollies, render_balance, render_charity
 from .money_schema import Account, do_daily, time_until_midnight, transfer, WithdrawNegativeError, WithdrawNotEnoughBalanceError
 
-sig_rollies = Signal()
+sig_rollies = Signal("rollies")
 
 @sig_setup.connect
 async def setup_commands(client: Bot):
@@ -21,16 +21,16 @@ async def setup_commands(client: Bot):
         if not success:
             delta_time = time_until_midnight(now)
             await ctx.send(f'''
-            Bisch wait.
-            You can only get money from your roll in {delta_time.seconds//3600} hour(s) {(delta_time.seconds%3600)//60} minute(s).
+Bisch wait.
+You can only get money from your roll in {delta_time.seconds//3600} hour(s) {(delta_time.seconds%3600)//60} minute(s).
 
-            That being said enjoy your gamba:
+That being said enjoy your gamba:
             ''')
 
         rendered_roll = render_rollies(roll)
-        await ctx.reply(rendered_roll)
+        await ctx.send(rendered_roll)
 
-        sig_rollies.emit(roll)
+        await sig_rollies.emit(roll)
 
     @client.command()
     async def balance(ctx: Context, *args):
@@ -38,7 +38,7 @@ async def setup_commands(client: Bot):
             case 0:
                 member = ctx.author
             case 1:
-                member = resolve_dumbass(args[0])
+                member = resolve_dumbass(ctx, args[0])
                 if not member:
                     await ctx.send("Couldn't find user lol, try mentioning someone")
                     return
@@ -56,7 +56,7 @@ async def setup_commands(client: Bot):
     async def charity(ctx: Context, *args):
         match len(args):
             case 2:
-                member = resolve_dumbass(args[0])
+                member = resolve_dumbass(ctx, args[0])
                 if not member:
                     await ctx.send("Couldn't find user lol, try mentioning someone")
                     return
@@ -70,7 +70,7 @@ async def setup_commands(client: Bot):
                 return
         
         sender = await Account.get_account(ctx.author.id)
-        recipient = await Account.get_account(member)
+        recipient = await Account.get_account(member.id)
         now = ctx.message.created_at
 
         try:

@@ -34,10 +34,12 @@ async def setup_transactions_table(client):
         f"""
         CREATE TABLE IF NOT EXISTS {TABLE_TRANSACTIONS} (
             {COL_TRANSACTION_ID} INTEGER PRIMARY KEY AUTOINCREMENT,
+            {COL_SENDER_ID} INTEGER NOT NULL,
+            {COL_RECIPIENT_ID} INTEGER NOT NULL,
+            {COL_AMOUNT} INTEGER NOT NULL,
+            {COL_TIMESTAMP} TEXT NOT NULL,
             FOREIGN KEY ({COL_SENDER_ID}) REFERENCES {TABLE_ACCOUNTS}({COL_DUMBASS_ID}),
             FOREIGN KEY ({COL_RECIPIENT_ID}) REFERENCES {TABLE_ACCOUNTS}({COL_DUMBASS_ID})
-            {COL_AMOUNT} INTEGER NOT NULL
-            {COL_TIMESTAMP} TEXT NOT NULL
         );
         """
     )
@@ -49,7 +51,7 @@ async def read_account(dumbass_id: int):
         WHERE {COL_DUMBASS_ID} = ?
     """
 
-    return await db.execute_query(query, (dumbass_id)) or []
+    return await db.execute_query(query, (dumbass_id,)) or []
 
 async def write_transaction(serialized_transaction: tuple[int, int, int, str]):
     query = f"""

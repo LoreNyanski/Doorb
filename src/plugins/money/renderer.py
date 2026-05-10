@@ -3,24 +3,22 @@ from datetime import datetime
 from .money_schema import time_until_midnight, Account, Transaction
 
 def render_rollies(roll):
-    response = f'''
-    ```
-                    Min: 
-                    1
-    {roll}
-                    Max: 
-                    1000
+    response = f'''```
+                Min: 
+                1
+{roll}
+                Max: 
+                1000
 
-    ####################
-    ##### Generate #####
-    ####################
-    ```
+####################
+##### Generate #####
+####################```
     '''
     return response
 
 def render_balance(account: Account, now: datetime):
     response = []
-    if account.can_claim_daily():
+    if account.can_claim_daily(now):
         response.append("Daily available :D")
     else:
         delta_time = time_until_midnight(now)
