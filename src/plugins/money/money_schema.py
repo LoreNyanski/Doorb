@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from dataclasses import dataclass
 import random as r
 
@@ -78,8 +78,8 @@ class Transaction:
         row = self._serializer()
         await write_transaction(row)        
 
-async def transfer(sender: Account, receiver: Account, amount: int, timestamp: datetime):
-    transaction = Transaction(sender.dumbass_id, receiver.dumbass_id, amount, timestamp)
+async def transfer(sender: Account, receiver: Account, amount: int, now: datetime):
+    transaction = Transaction(sender.dumbass_id, receiver.dumbass_id, amount, now)
     await transaction.save()
 
     sender.withdraw(amount)
@@ -87,8 +87,8 @@ async def transfer(sender: Account, receiver: Account, amount: int, timestamp: d
     await sender.save()
     await receiver.save()
 
-async def grant_money(receiver: Account, amount: int, timestamp: datetime):
-    transaction = Transaction(BANK_ID, receiver.dumbass_id, amount, timestamp)
+async def grant_money(receiver: Account, amount: int, now: datetime):
+    transaction = Transaction(BANK_ID, receiver.dumbass_id, amount, now)
     await transaction.save()
 
     receiver.deposit(amount)
@@ -98,15 +98,17 @@ async def grant_money(receiver: Account, amount: int, timestamp: datetime):
 
 
 
-async def do_daily(account: Account, timestamp: datetime) -> tuple[bool, int]:
+async def do_daily(account: Account, now: datetime) -> tuple[bool, int]:
     roll = r.randint(1, 1000)
     success = False
 
-    if account.can_claim_daily(timestamp):
+    if account.can_claim_daily(now):
         success = True
-        account.last_daily = timestamp
+        account.last_daily = now
         # await account.save() 
-        await grant_money(account, roll, timestamp)
+        await grant_money(account, roll, now)
     
     return (success, roll)
 
+def time_until_midnight(now: datetime) -> timedelta:
+    return utc_to_ams(now).time()

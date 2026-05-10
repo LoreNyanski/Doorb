@@ -1,13 +1,16 @@
 import logging
 import os
 import importlib
-from discord.ext.commands import Bot
+import re
+from discord.ext.commands import Bot, Context
 import discord
 
 import src.plugins
 
 from .env import TEST_GUILD_ID, TEST_MODE
 from .signal import Signal
+
+MENTION_REGEX = re.compile(r"<@!?(\d+)>")
 
 logger = logging.getLogger(__name__)
 
@@ -53,3 +56,17 @@ def import_plugins():
                 logger.debug(f"Successfully imported plugin: {mod.name}    :D")
             except Exception as e:
                 logger.exception(f"Failed to import plugin: {mod.name}    D:")
+
+
+def resolve_dumbass(ctx: Context, arg: str) -> discord.Member | None:
+    """Checks if the provided argument is either a mention or the name of a guild member. If yes returns the Member"""
+    arg = arg.strip()
+    member: discord.Member | None
+
+    match = MENTION_REGEX.fullmatch(arg)
+    if match:
+        user_id = int(match.group(1))
+        member = ctx.guild.get_member(user_id)
+    else:
+        member = ctx.guild.get_member_named(arg)
+    return member
