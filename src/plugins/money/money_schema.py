@@ -1,11 +1,16 @@
 from datetime import datetime
+from dataclasses import dataclass
+import random as r
+
 
 from src.utils import utc_to_ams
 
-from .interface_db import write_account, read_account
+from .interface_db import write_account, read_account, write_transaction
 
 DEFAULT_BALANCE = 500
 DEFAULT_LAST_DAILY = datetime.min
+
+BANK_ID = 0
 
 _account_cache: dict[int, Account] = {}
 
@@ -39,28 +44,69 @@ class Account:
     async def save(self):
         row = self._serializer()
         await write_account(row)
-
-    def balance_check(self, required_amount: int) -> bool:
-        return (required_amount < self.balance) and (required_amount >= 0)
         
-    def daily_check(self, current_time: datetime) -> bool:
+    def can_claim_daily(self, current_time: datetime) -> bool:
         return utc_to_ams(self.last_daily) < utc_to_ams(current_time).date()
 
-    def add_balance(self, amount: int):
+    def can_withdraw(self, amount: int) -> bool:
+        return amount <= self.balance
+
+    def withdraw(self, amount: int):
+        if amount < 0:
+            raise ValueError("Withdrawal can't be negative")
+        if not self.can_withdraw(amount):
+            raise ValueError("Insufficient funds")
+        self.balance -= amount
+
+    def deposit(self, amount: int):
+        if amount < 0:
+            raise ValueError("Deposit can't be negative")
         self.balance += amount
-
-    def create_transation(self, recipient: Account, amount: int) -> Transaction:
-        return Transaction(self, recipient, amount)
         
-    
-    
-
+@dataclass
 class Transaction:
-    
-    def __init__(self, sender: Account, receiver: Account, amount: int):
-        self.sender = sender
-        self.receiver = receiver
-        self.amount = amount
+    sender_id: int
+    receiver_id: int
+    amount: int
+    timestamp: datetime
 
-    def payout():
-        pass
+    def _serializer(self) -> tuple[int, int, int, str]:
+        serialized_timestamp = self.timestamp.isoformat()
+        return (self.sender_id, self.receiver_id, self.amount, serialized_timestamp)
+
+    async def save(self):
+        row = self._serializer()
+        await write_transaction(row)        
+
+async def transfer(sender: Account, receiver: Account, amount: int, timestamp: datetime):
+    transaction = Transaction(sender.dumbass_id, receiver.dumbass_id, amount, timestamp)
+    await transaction.save()
+
+    sender.withdraw(amount)
+    receiver.deposit(amount)
+    await sender.save()
+    await receiver.save()
+
+async def grant_money(receiver: Account, amount: int, timestamp: datetime):
+    transaction = Transaction(BANK_ID, receiver.dumbass_id, amount, timestamp)
+    await transaction.save()
+
+    receiver.deposit(amount)
+    await receiver.save()
+
+
+
+
+
+async def do_daily(account: Account, timestamp: datetime) -> tuple[bool, int]:
+    roll = r.randint(1, 1000)
+    success = False
+
+    if account.can_claim_daily(timestamp):
+        success = True
+        account.last_daily = timestamp
+        # await account.save() 
+        await grant_money(account, roll, timestamp)
+    
+    return (success, roll)
+

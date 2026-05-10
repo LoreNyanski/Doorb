@@ -11,6 +11,7 @@ COL_TRANSACTION_ID = "transaction_id"
 COL_SENDER_ID = "sender_id"
 COL_RECIPIENT_ID = "recipient_id"
 COL_AMOUNT = "amount"
+COL_TIMESTAMP = "timestamp"
 
 @sig_setup.connect
 async def setup_accounts_table(client):
@@ -36,6 +37,7 @@ async def setup_transactions_table(client):
             FOREIGN KEY ({COL_SENDER_ID}) REFERENCES {TABLE_ACCOUNTS}({COL_DUMBASS_ID}),
             FOREIGN KEY ({COL_RECIPIENT_ID}) REFERENCES {TABLE_ACCOUNTS}({COL_DUMBASS_ID})
             {COL_AMOUNT} INTEGER NOT NULL
+            {COL_TIMESTAMP} TEXT NOT NULL
         );
         """
     )
@@ -49,10 +51,10 @@ async def read_account(dumbass_id: int):
 
     return await db.execute_query(query, (dumbass_id)) or []
 
-async def write_transaction(serialized_transaction: tuple[int, int, int]):
+async def write_transaction(serialized_transaction: tuple[int, int, int, str]):
     query = f"""
-        INSERT INTO {TABLE_TRANSACTIONS} ({COL_SENDER_ID}, {COL_RECIPIENT_ID}, {COL_AMOUNT}) 
-        VALUES (?, ?, ?)
+        INSERT INTO {TABLE_TRANSACTIONS} ({COL_SENDER_ID}, {COL_RECIPIENT_ID}, {COL_AMOUNT}, {COL_TIMESTAMP}) 
+        VALUES (?, ?, ?, ?)
     """
 
     await db.execute_query(query, serialized_transaction)
