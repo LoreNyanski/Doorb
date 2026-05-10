@@ -1,6 +1,7 @@
 from discord.ext.commands import Context, Bot
 
 from src.pluginbot import sig_setup
+from src.utils import resolve_dumbass
 
 from .stats_schema import get_stat_item
 from .stats_fetcher import fetch_leaderboard, fetch_stats
@@ -24,18 +25,19 @@ async def setup_commands(client: Bot):
                 entries = await fetch_stats([ctx.author.id])
                 subject = ctx.author.name
             case 1:
-                arg = args[0]
+                arg = str(args[0])
                 if arg == "server" or arg == "guild":
                     # LIST ALL STATS FOR ONE GUILD
                     entries = await fetch_stats([user.id for user in ctx.guild.members])
                     subject = ctx.guild.name
-                elif ctx.message.mentions:
-                    # LIST ALL STATS FOR MENTIONED PERSONS
-                    entries = await fetch_stats([ctx.message.mentions[0].id])
-                    subject = ctx.message.mentions[0].name
                 else:
-                    await ctx.send('Incorrect arguments loser (either tag someone or "server")')
-                    return
+                    # LIST STATS FOR MENTIONED PERSON
+                    member = resolve_dumbass(ctx, arg)
+                    if not member:
+                        await ctx.send('Incorrect arguments loser (either mention someone or "server")')
+                        return
+                    entries = await fetch_stats([member.id])
+                    subject = ctx.message.mentions[0].name
             case _:
                 await ctx.send("Too many arguments bub")
                 return
