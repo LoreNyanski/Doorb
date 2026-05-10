@@ -44,4 +44,4 @@ async def execute_query(query: str, params: Iterable=(), many: bool=False):
 @sig_setup.connect
 async def start_worker(bot: Bot):
     global worker
-    worker = bot.loop.create_task(db_worker())
+    worker = asyncio.create_task(db_worker())
