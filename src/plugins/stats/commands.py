@@ -1,7 +1,6 @@
 from discord.ext.commands import Context, Bot
 
-from src.pluginbot import sig_setup
-from src.utils import resolve_dumbass
+from src.pluginbot import sig_setup, resolve_dumbass
 
 from .stats_schema import get_stat_item
 from .stats_fetcher import fetch_leaderboard, fetch_stats

@@ -21,6 +21,7 @@ class StatGroup(ABC, Generic[T_Entry, T_Context]):
         self.name = name
         self.display_label = display_label
         self.items: list[StatItem] = []
+        register_stat_group(self)
 
     @abstractmethod
     async def fetch_data(self, dumbass_ids: list[int]) -> list[T_Entry]:

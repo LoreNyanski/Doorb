@@ -23,8 +23,6 @@ async def setup_incident_stat_group(client):
     group.add_item(StatMax("max", "Longest streak"))
     group.add_item(StatMin("min", "Shortest streak", False))
 
-    register_stat_group(group)
-
 
 
 @dataclass
