@@ -14,6 +14,10 @@ BANK_ID = 0
 
 _account_cache: dict[int, Account] = {}
 
+class WithdrawNegativeError(ValueError): ...
+class WithdrawNotEnoughBalanceError(ValueError): ...
+class DepositNegativeError(ValueError): ...
+
 class Account:
     
     def __init__(self, dumbass_id: int, balance: int = DEFAULT_BALANCE, last_daily: datetime = DEFAULT_LAST_DAILY):
@@ -53,14 +57,14 @@ class Account:
 
     def withdraw(self, amount: int):
         if amount < 0:
-            raise ValueError("Withdrawal can't be negative")
+            raise WithdrawNegativeError("Withdrawal can't be negative")
         if not self.can_withdraw(amount):
-            raise ValueError("Insufficient funds")
+            raise WithdrawNotEnoughBalanceError("Insufficient funds")
         self.balance -= amount
 
     def deposit(self, amount: int):
         if amount < 0:
-            raise ValueError("Deposit can't be negative")
+            raise DepositNegativeError("Deposit can't be negative")
         self.balance += amount
         
 @dataclass
@@ -78,7 +82,7 @@ class Transaction:
         row = self._serializer()
         await write_transaction(row)        
 
-async def transfer(sender: Account, receiver: Account, amount: int, now: datetime):
+async def transfer(sender: Account, receiver: Account, amount: int, now: datetime) -> Transaction:
     transaction = Transaction(sender.dumbass_id, receiver.dumbass_id, amount, now)
     await transaction.save()
 
@@ -87,13 +91,16 @@ async def transfer(sender: Account, receiver: Account, amount: int, now: datetim
     await sender.save()
     await receiver.save()
 
-async def grant_money(receiver: Account, amount: int, now: datetime):
+    return transaction
+
+async def grant_money(receiver: Account, amount: int, now: datetime) -> Transaction:
     transaction = Transaction(BANK_ID, receiver.dumbass_id, amount, now)
     await transaction.save()
 
     receiver.deposit(amount)
     await receiver.save()
 
+    return transaction
 
 
 
