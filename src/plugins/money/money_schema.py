@@ -8,7 +8,7 @@ from src.utils import utc_to_ams
 from .interface_db import write_account, read_account, write_transaction
 
 DEFAULT_BALANCE = 500
-DEFAULT_LAST_DAILY = datetime.now(tz=timezone.utc)
+DEFAULT_LAST_DAILY = datetime.now(tz=timezone.utc) - timedelta(days=1)
 
 BANK_ID = 0
 
