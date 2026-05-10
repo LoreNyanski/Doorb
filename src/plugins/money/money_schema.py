@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from dataclasses import dataclass
 import random as r
 
@@ -8,7 +8,7 @@ from src.utils import utc_to_ams
 from .interface_db import write_account, read_account, write_transaction
 
 DEFAULT_BALANCE = 500
-DEFAULT_LAST_DAILY = datetime.min
+DEFAULT_LAST_DAILY = datetime.now(tz=timezone.utc)
 
 BANK_ID = 0
 
@@ -50,7 +50,7 @@ class Account:
         await write_account(row)
         
     def can_claim_daily(self, current_time: datetime) -> bool:
-        return utc_to_ams(self.last_daily) < utc_to_ams(current_time).date()
+        return utc_to_ams(self.last_daily).date() < utc_to_ams(current_time).date()
 
     def can_withdraw(self, amount: int) -> bool:
         return amount <= self.balance
@@ -118,4 +118,8 @@ async def do_daily(account: Account, now: datetime) -> tuple[bool, int]:
     return (success, roll)
 
 def time_until_midnight(now: datetime) -> timedelta:
-    return utc_to_ams(now).time()
+    next_midnight = datetime.combine(
+        now.date() + timedelta(days=1),
+        datetime.min.time()
+    )
+    return next_midnight - now
