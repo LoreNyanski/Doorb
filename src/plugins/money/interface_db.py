@@ -49,13 +49,13 @@ async def read_account(dumbass_id: int):
 
     return await db.execute_query(query, (dumbass_id)) or []
 
-async def write_transaction(serialized_transation: tuple[int, int, int]):
+async def write_transaction(serialized_transaction: tuple[int, int, int]):
     query = f"""
         INSERT INTO {TABLE_TRANSACTIONS} ({COL_SENDER_ID}, {COL_RECIPIENT_ID}, {COL_AMOUNT}) 
         VALUES (?, ?, ?)
     """
 
-    await db.execute_query(query, serialized_transation)
+    await db.execute_query(query, serialized_transaction)
 
 async def write_account(serialized_account: tuple[int, int, str]):
     query = f"""
