@@ -22,7 +22,7 @@ async def leaderboard_plaintext(data: LeaderboardResult, get_user) -> str:
 
     lines = []
     for i in range(len(data.entries)):
-        lines.append(f"#{(i+1):<{counter_len}} {user_cache[i]:<{left_len}}: {formatted_value_cache[i]:>{right_len}}")
+        lines.append(f"#{(i+1):<{counter_len}}  {user_cache[i]:<{left_len}}  {formatted_value_cache[i]:>{right_len}}")
     textbox = f"```\n{'\n'.join(lines)}\n```"
     label = f"Ranking for {data.label} (and bisches):\n"
     return f"{label}{textbox}"
@@ -41,7 +41,8 @@ async def stats_plaintext(data: StatResult, subject):
         group_header = f"{group.label}:"
         lines = [group_header]
         for item in group.items:
-            lines.append(f"  {item.label:<{left_len}}: {item.formatted:>{right_len}}")
+            label = f'{item.label}:'
+            lines.append(f"  {label:<{left_len+1}}  {item.formatted:>{right_len}}")
         pages.append("\n".join(lines))
     textbox = f"```\n{'\n\n'.join(pages)}\n```"
     label = f"{subject}'s stats (point at them and laugh):"
