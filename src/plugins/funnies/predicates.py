@@ -1,14 +1,16 @@
 import re
 import random
+from discord import Message
 
 CHANCE_AMOGUS = 15
 CHANCE_DAD = 15
 CHANCE_FUCKING = 15
 CHANCE_SALUTE = 2
 CHANCE_HIVEMIND = 1 # it already basically never happens
+CHANCE_NRY = 1
 CHANCE_67 = 1
 
-hivemind_buffer = ['', '', '']
+hivemind_buffer = ['', '', '.']
 
 def rndm(chance) -> bool:
     """returns true with 1/chance odds"""
@@ -39,3 +41,6 @@ def hivemind_check(message: str) -> bool:
     
 def s67_check(message: str) -> bool:
     return rndm(CHANCE_67) and re.search(r'.*(6|s+i+x+).*(7|s+e+v+e+n+).*', message, re.IGNORECASE)
+
+def nry_check(message: Message) -> bool:
+    return rndm(CHANCE_NRY) and message.attachments and message.attachments[0].content_type.startswith("image/")

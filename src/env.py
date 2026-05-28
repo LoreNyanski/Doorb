@@ -10,5 +10,7 @@ OPEN_AI_TOKEN = os.getenv("OPEN_AI_TOKEN")
 
 TEST_GUILD_ID = int(os.getenv("TEST_GUILD_ID"))
 
-lore = os.getenv("lore")
-shibe = os.getenv("shibe")
+lh = int(os.getenv("lh"))
+frg = int(os.getenv("frg"))
+lore = int(os.getenv("lore"))
+shibe = int(os.getenv("shibe"))

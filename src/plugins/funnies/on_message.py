@@ -1,10 +1,14 @@
 from discord import Message
 import asyncio
 import re
+from PIL import Image as Im
+from io import BytesIO
+from discord import File
 
 from src.pluginbot import sig_on_message
+from src.utils import frg_check
 
-from .predicates import dad_check, fucking_check, salute_check, amogus_check, hivemind_check, s67_check
+from .predicates import dad_check, fucking_check, salute_check, amogus_check, hivemind_check, s67_check, nry_check
 
 @sig_on_message.connect
 async def process_funnies(message: Message):
@@ -76,4 +80,19 @@ haha, 67
     elif salute_check(message.content):
         await message.add_reaction('🫡')
 
+    elif nry_check(message):
+        if not frg_check(message.guild.id): return
+        nry = Im.open('nry.png')
+        with BytesIO() as im_buffer:
+            await message.attachments[0].save(fp=im_buffer, seek_begin=True)
 
+            with Im.open(fp=im_buffer) as im:
+                
+                nry_sized = nry.resize((nry.size[0]*im.size[1]//nry.size[1], im.size[1]))
+                im.paste(nry_sized,(0,0),mask=nry_sized)
+
+                output_buffer = BytesIO()
+                im.save(output_buffer, format="PNG")
+                output_buffer.seek(0)
+
+        await message.reply(file=File(fp=output_buffer, filename="result.png"))

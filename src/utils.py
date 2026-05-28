@@ -1,5 +1,6 @@
 from zoneinfo import ZoneInfo
 from datetime import datetime, timedelta
+from .env import lh, frg, TEST_MODE
 
 def utc_to_ams(utc_time: datetime):
     """returns the input utc time as ams localised time"""
@@ -23,3 +24,9 @@ def format_timedelta(time: timedelta) -> str:
 
     parts.append(f"{seconds:>2}s")
     return " ".join(parts)
+
+def lh_check(guild_id: int) -> bool:
+    return TEST_MODE or guild_id == lh
+
+def frg_check(guild_id: int) -> bool:
+    return TEST_MODE or guild_id == frg
