@@ -2,7 +2,7 @@ import logging
 import os
 import importlib
 import re
-from discord.ext.commands import Bot, Context
+from discord.ext.commands import Bot
 import discord
 
 import src.plugins
@@ -58,7 +58,7 @@ def import_plugins():
                 logger.exception(f"Failed to import plugin: {mod.name}    D:")
 
 
-def resolve_dumbass(ctx: Context, arg: str) -> discord.Member | None:
+def resolve_dumbass(guild: discord.Guild, arg: str) -> discord.Member | None:
     """Checks if the provided argument is either a mention or the name of a guild member. If yes returns the Member"""
     arg = arg.strip()
     member: discord.Member | None
@@ -66,7 +66,13 @@ def resolve_dumbass(ctx: Context, arg: str) -> discord.Member | None:
     match = MENTION_REGEX.fullmatch(arg)
     if match:
         user_id = int(match.group(1))
-        member = ctx.guild.get_member(user_id)
-    else:
-        member = ctx.guild.get_member_named(arg)
+        member = guild.get_member(user_id)
+    if not member is None:
+        member = guild.get_member_named(arg)
+    if not member is None:
+        try:
+            arg_int = int(arg)
+            member = guild.get_member(arg_int)
+        except: ...
+
     return member

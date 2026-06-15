@@ -1,6 +1,6 @@
 from discord.ext.commands import Context, Bot
 
-from src.pluginbot import sig_setup, resolve_dumbass
+from src.pluginbot import sig_setup, bass
 from src.signal import Signal
 
 from .renderer import render_rollies, render_balance, render_charity
@@ -38,7 +38,7 @@ That being said enjoy your gamba:
             case 0:
                 member = ctx.author
             case 1:
-                member = resolve_dumbass(ctx, args[0])
+                member = bass(ctx.guild, args[0])
                 if not member:
                     await ctx.send("Couldn't find user lol, try mentioning someone")
                     return
@@ -56,7 +56,7 @@ That being said enjoy your gamba:
     async def charity(ctx: Context, *args):
         match len(args):
             case 2:
-                member = resolve_dumbass(ctx, args[0])
+                member = bass(ctx.guild, args[0])
                 if not member:
                     await ctx.send("Couldn't find user lol, try mentioning someone")
                     return

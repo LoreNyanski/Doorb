@@ -102,8 +102,14 @@ async def grant_money(receiver: Account, amount: int, now: datetime) -> Transact
 
     return transaction
 
+async def take_money(sender: Account, amount: int, now: datetime) -> Transaction:
+    transaction = Transaction(BANK_ID, sender.dumbass_id, amount, now)
+    await transaction.save()
 
+    sender.withdraw(amount)
+    await sender.save()
 
+    return transaction
 
 async def do_daily(account: Account, now: datetime) -> tuple[bool, int]:
     roll = r.randint(1, 1000)

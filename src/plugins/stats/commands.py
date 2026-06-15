@@ -31,7 +31,7 @@ async def setup_commands(client: Bot):
                     subject = ctx.guild.name
                 else:
                     # LIST STATS FOR MENTIONED PERSON
-                    member = resolve_dumbass(ctx, arg)
+                    member = resolve_dumbass(ctx.guild, arg)
                     if not member:
                         await ctx.send('Incorrect arguments loser (either mention someone or "server")')
                         return
