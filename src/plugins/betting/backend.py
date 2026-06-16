@@ -29,13 +29,13 @@ class BetTable:
         odds = self.subject_odds(winner_id)
         return [(bet, bet.payout(odds)) for bet in self.bets if bet.subject_id == winner_id]
     
-    def _aggregate_totals(self) -> dict[str, int]:
+    def _aggregate_totals(self) -> dict[int, int]:
         totals = {}
         for bet in self.bets:
             totals[bet.subject_id] = totals.get(bet.subject_id, 0) + bet.amount
         return totals
 
-    def summary(self) -> dict[str, dict]:
+    def summary(self) -> dict[int, dict]:
         totals = self._aggregate_totals()
         pool = sum(totals.values())
 
